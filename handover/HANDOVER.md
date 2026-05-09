@@ -1,104 +1,96 @@
-# Mojo Viability Handover — 2026-05-09
+# Mojo Viability Handover — 2026-05-09 (Step 2)
 
 ## Session Summary
 
-Step 1 of the 12-step viability extraction plan. Bootstrapped a fresh Vite + React 18 + TS + Tailwind + shadcn + Supabase repo with all 4 providers ported (auth-stripped to viability owner-only), planning docs imported, and a "Hello user" smoke page proving the auth chain end-to-end. First commit pushed; Vercel auto-deployed; mojobusiness.ai is already live serving the new repo (DNS was cut over before this session — bonus discovery).
+Step 2 of the 12-step extraction plan: 14 viability calculation engines copied verbatim from mojo_business current main into `src/lib/calculations/`, with `eventUplift.ts` dropped as the confirmed orphan. Two HARD STOPs along the way (an inventory miss + a cascade-error question) were both adjudicated by the strategic-advisor session and accepted. Typecheck is red as expected — 17 TS2307s across 7 unresolved paths plus 19 cascade errors confined to 3 files; all expected to vanish once Step 3 lands the type model + utils. Commit pushed; Vercel build will fail on this commit by design — production stays on Step 1's last green deploy `2950ee6`.
 
 ## Completed
 
-**Scaffolding**
-- Vite + React 18 + TS scaffold (downgraded from create-vite v9's React 19 / TS 6 default to React 18.3.1 / TS 5.6.2 / Vite 5.4 to align with mojo_business)
-- Tailwind + PostCSS + index.css copied from mojo_business; content paths trimmed to `./index.html` + `./src/**/*.{ts,tsx}`
-- Path alias `@/* → src/*` wired in tsconfig.app.json (`paths` only — `baseUrl` dropped, deprecated in TS 7+) and vite.config.ts (`path.resolve(__dirname, './src')`)
-- TS-5.8-only flags (`erasableSyntaxOnly`, `verbatimModuleSyntax`) trimmed from the Vite scaffold's tsconfigs to work with pinned TS 5.6.2
-- `src/vite-env.d.ts` added (create-vite v9 omits it)
+**File operations**
+- 14 calc engines copied from `/tmp/mojo-business-current/src/lib/calculations/` to `src/lib/calculations/`: businessPlanGenerator, businessPlanReadiness, dataSourceSelector, forecastEngine, holidayBumpProfiles, hourlyBenchmarks, insightsEngine, locationSuitability, mojoFitScore, orderSourceFees, projectSummary, seasonalityProfiles, summaryViability, weeklyForecastEngine
+- `eventUplift.ts` dropped (confirmed orphan per pre-extraction-punch-list.md §1)
+- 2,854 LOC ported
 
-**Primitives + providers**
-- 28 shadcn primitives copied to `src/components/ui/` (3 inter-primitive imports rewritten from `@/shared/components/ui/*` → `@/components/ui/*`)
-- `src/lib/utils.ts` (`cn` helper) + `src/hooks/use-toast.ts` shipped
-- All 4 providers ported to `src/providers/`:
-  - `AuthProvider.tsx` — viability-flavoured, exposes only `{ user, isLoading, signIn, signUp, signOut }`. Stripped `isSuperUser`, `signInWithProvider`, `@/shared/lib/auth` dependency (inlined), `is_super_user` RPC, `OrgProvider` integration — per [`app-tsx-anatomy.md`](../context/viability-extraction/app-tsx-anatomy.md) §2.3.
-  - `QueryProvider.tsx`, `ThemeProvider.tsx`, `ToastProvider.tsx` — verbatim from mojo_business.
-- `src/lib/supabase.ts` viability-flavoured: `storageKey: 'mojo-viability-auth'`, dropped `mark_business_memberships_accepted` RPC, `w360()` helper, `BusinessProject`/`UserProfile` types, `checkIsAdmin()`. Added `if (import.meta.env.DEV) window.supabase = supabase` as a dev-only smoke aid.
+**Audit findings (logged in commit message)**
+- `dataSourceSelector.ts` and `orderSourceFees.ts` confirmed NOT orphans (sibling-imported by `projectSummary.ts`); shipped per punch-list §1's correction to inventory.md
+- Inventory miss caught: `businessPlanGenerator.ts` imports from `../hoursVisualization` (a 4-file V-ONLY directory at `src/lib/hoursVisualization/`) and `../contentUploads` (a V-ONLY util at `src/lib/contentUploads.ts`) — neither was in the dispatch's Step-3 allowlist nor in inventory.md. Both confirmed real V-ONLY surface. Strategic-advisor session expanded Step 3 scope to absorb them.
 
-**App + smoke page**
-- `src/App.tsx` rewritten as `Query → Theme → Toast → Auth → HelloUser` provider tree (mirroring mojo_business AppShell order minus Org/Onboarding)
-- `<HelloUser>` renders "Mojo Viability — Not signed in" when unauthed and "Hello, {email}" + Sign Out button when authed
-- Vite scaffold's unused artefacts (`App.css`, `assets/`) deleted
+**Cascade analysis (logged in commit message)**
+- Typecheck output: 17 TS2307 + 19 non-TS2307 errors. The non-TS2307 errors (TS7006 implicit-any × 15, TS18046 unknown × 2, TS2345 unknown→number × 1) appear ONLY in the 3 files that operate on unresolved types via `.reduce/.sort/.flatMap` or destructure unknown values: `businessPlanGenerator.ts`, `businessPlanReadiness.ts`, `projectSummary.ts`. The 8 other engines have only TS2307 errors. Perfect correlation supports the cascade-from-missing-types hypothesis. Math layer typechecks green in mojo_business production, so these are cascade artefacts, not inherent bugs. Step 3 includes a falsifiable cascade check (see Next Session).
 
-**Docs**
-- 7 viability-extraction planning docs copied to `context/viability-extraction/`
-- `PROJECT_BRIEF.md` authored at repo root
-- `CLAUDE.md` authored at repo root, then patched mid-session-end with three load-bearing sections (Session Start Checklist, End of Session — Handover with full template + proactive trigger, Session Trigger) per a follow-up dispatch — this handover is the first entry in the chain that protocol seeds.
-
-**Env**
-- `.env.example` committed with placeholder keys + comment about the shared mojo_business Supabase project
-- `.env.local` placeholder file created; Max populated locally during Task 13 smoke
-- `.gitignore` updated to ignore `*.tsbuildinfo` and `.playwright-mcp/`
-
-**Smoke verification**
-- `npm run typecheck`: clean
-- `npm run build`: clean — 141 modules, 440 KB JS / 39 KB CSS, ~796ms
-- `npm run dev`: localhost:5173 renders "Mojo Viability — Not signed in"
-- Browser console sign-in (`await supabase.auth.signInWithPassword({...})`) succeeded; page rendered "Hello, admin@maxsenterprises.com.au"
-- Sign-out: returned to "Not signed in"
-- Production smoke at https://www.mojobusiness.ai/: page renders cleanly, zero console errors. Vercel project env vars confirmed working (Supabase client instantiated correctly).
-
-**Decisions baked in**
-- DNS: mojobusiness.ai serves viability (already cut over before this session began — bonus discovery via Vercel project domains)
-- Supabase: same project + same anon key as mojo_business (project ID `zaxzzvluytxtbsjxlzkg`) per Q1
-- html2canvas: explicit dependency in `package.json` from day 1 per pre-extraction-punch-list §4
-
-**Commit + push**
-- Bootstrap commit: `2950ee62c545951233a68f2e4aeab624063f9e6c` on `main`
-- Pushed to `origin/main` (`ea4d527..2950ee6`)
-- Vercel auto-deployment `dpl_Xnknh3T5rc1tqmyP1jiViSnBG6Hg` — state READY, target production
-- (A second commit covering this CLAUDE.md patch + this handover seed lands in the wrap-up's Task 3.)
+**Commits + push**
+- Step 2 commit: `7c40fa9 feat: import 14 viability calculation engines (eventUplift dropped as orphan)` — pushed to `origin/main` (`213389e..7c40fa9`)
+- Vercel build on `7c40fa9` will be red (typecheck fails); production stays on `2950ee6` (last green deploy from Step 1). This is by design per the dispatch.
 
 ## In Progress
 
-None — Step 1 is complete.
+None — Step 2 is complete.
 
 ## Blockers
 
-None blocking Step 2.
+None blocking Step 3.
 
-**Action items for Max outside this session:**
-- **Rotate the password for `admin@maxsenterprises.com.au` in Supabase.** The plaintext was pasted into chat during the Task 13 smoke debug and is now in conversation logs/telemetry. Treat as compromised. Supabase Dashboard → Auth → Users → admin@maxsenterprises.com.au → reset/update password.
-- (Optional) Eyeball the Vercel project env vars at https://vercel.com/mschaapvelds-projects/mojo-viability/settings/environment-variables — production smoke confirms they're set, but worth a quick visual check.
+**Carried over from Step 1 (still outstanding for Max outside the session):**
+- Rotate the password for `admin@maxsenterprises.com.au` in Supabase. The plaintext leaked into chat during Step 1's Task 13 smoke debug. Treat as compromised.
 
 ## Next Session
 
-**Step 2 — Move calculation engines.** Per [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) §3 Step 2. Estimated 1h. Recommend Monday 2026-05-11 or later — Sunday 2026-05-10 is Mother's Day per Max's call.
+**Step 3 — type model + shared utils.** Per [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) §3 Step 3, with two scope adjustments noted below. Estimated 1.5–2h (slight bump from the plan's 1–2h to absorb the inventory miss).
 
-Pure file copying from mojo_business's `pre-phase-c-deletion` git tag (commit `2fc45f7`) into `src/lib/calculations/`. 14 files (15 minus `eventUplift.ts` confirmed orphan per [`pre-extraction-punch-list.md`](../context/viability-extraction/pre-extraction-punch-list.md) §1).
+Step 3 must satisfy SEVEN missing import paths that the calc engines reference:
 
-**Caveats for the next session:**
-- `npm run typecheck` is **expected to fail** at the end of Step 2 — the calc engines depend on `@/lib/types/projectTypes`, `@/lib/timeUtils`, `@/lib/addressUtils`, `@/lib/format`, `@/lib/htmlEscape` which only land in Step 3. This is acceptable WIP per the plan.
-- `dataSourceSelector.ts` and `orderSourceFees.ts` are NOT orphans (per pre-extraction-punch-list §1's correction to inventory.md) — both are sibling-imported by `projectSummary.ts`. Ship them.
-- `eventUplift.ts` IS the confirmed orphan — drop it during the copy.
-- Source-path setup: re-clone the tag with `git clone --depth 1 -b pre-phase-c-deletion https://github.com/mschaapveld/mojo_business.git /tmp/mojo-pre-phase-c`. Re-establish if `/tmp` has been cleared.
-- The `/tmp/mojo-business-current/` clone (current main) used during bootstrap is also useful for cross-reference (`git clone --depth 1 https://github.com/mschaapveld/mojo_business.git /tmp/mojo-business-current`).
-- Step 2 needs its own structured dispatch from Max's Claude.ai strategic-advisor session — same shape as the Step 1 brief that opened today's session.
+- `@/lib/types/projectTypes` — projectTypes.ts (per plan)
+- `../timeUtils`, `../addressUtils`, `../format`, `../htmlEscape` — small utils (per plan)
+- `../contentUploads` — **KEEP at `src/lib/contentUploads.ts`**. Strategic-advisor session overrode the plan's rename to `features/project/api/contentUploadsApi.ts`; the rename is deferred to a later cleanup step. Keeping it at `/lib/` avoids forcing a one-line edit inside `businessPlanGenerator.ts` (a calc engine) to point at a feature folder.
+- `../hoursVisualization` — **NEW to Step 3 scope.** Port the full directory (4 files: `index.ts`, `dataTransform.ts`, `htmlGenerator.ts`, `types.ts`) verbatim from `/tmp/mojo-business-current/src/lib/hoursVisualization/` to `src/lib/hoursVisualization/`. No rename. `lib/export/` consumers will need it again at Step 7.
+
+Other Step 3 ports per plan still apply: `projectFactory.ts`, `uploadValidation.ts`, `projects.ts → projectsApi.ts` (RENAMED), `permissions.ts → permissionsApi.ts` (RENAMED), drop `resolveJoinCode.ts`.
+
+**Step 3 acceptance — falsifiable cascade check:**
+
+After landing the 7 modules, run `npm run typecheck`. Three outcomes:
+
+- **GREEN (0 errors)** → cascade theory confirmed. Step 3 done. `npm run build` should also be green; verify.
+- **RED with persistent TS7006 / TS18046 / TS2345 in `businessPlanGenerator.ts` / `businessPlanReadiness.ts` / `projectSummary.ts`** → cascade theory was wrong. **HARD STOP** and investigate before commit. Likely causes: (a) the ported types/utils have shape drift from what the engines expect; (b) genuine bugs in the math layer that mojo_business hasn't surfaced because of looser tsconfig flags; (c) a TypeScript version delta between the two repos surfacing latent strict-mode issues.
+- **RED with TS2307 only** → some import path is still wrong. Easy fix; not a theory failure.
+
+**Caveats for Step 3:**
+- Source path: `/tmp/mojo-business-current/` (current main, like Step 2). Re-clone with `git clone --depth 1 https://github.com/mschaapveld/mojo_business.git /tmp/mojo-business-current` if `/tmp` has been cleared.
+- The `pre-phase-c-deletion` tag clone (`/tmp/mojo-pre-phase-c/`) is for Steps 4+ when V-ONLY UI surface needs to come from the tag, not for Step 3.
+- Step 3 needs its own structured dispatch from Max's Claude.ai strategic-advisor session.
 
 ## Key References
 
+**Repo state:**
+- Bootstrap commit (Step 1): `2950ee6` — last green Vercel deploy
+- CLAUDE.md handover patch: `213389e`
+- Step 2 commit: `7c40fa9` — Vercel build red here by design
+- Branch: `main` (no feature branches; pushing direct per Step 1 pattern)
+
+**The 7 unresolved paths Step 3 must satisfy:**
+1. `@/lib/types/projectTypes` (also imported as `../types/projectTypes`)
+2. `../timeUtils`
+3. `../addressUtils`
+4. `@/lib/format`
+5. `@/lib/htmlEscape`
+6. `../contentUploads` ← inventory miss, KEEP at /lib/
+7. `../hoursVisualization` ← inventory miss, directory port to /lib/
+
+**The 3 cascade-emitting files (Step 3's falsifiable check targets):**
+- `src/lib/calculations/businessPlanGenerator.ts` (15 cascade errors expected to vanish)
+- `src/lib/calculations/businessPlanReadiness.ts` (1 cascade error expected to vanish)
+- `src/lib/calculations/projectSummary.ts` (4 cascade errors expected to vanish)
+
 **Planning docs (read in order at session start):**
 - [`context/viability-extraction/extraction-plan-2026-05-09.md`](../context/viability-extraction/extraction-plan-2026-05-09.md) — reconciliation plan, read first
-- [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) — the 12-step plan (Step 2 spec at §3 Step 2)
+- [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) — the 12-step plan (Step 3 spec at §3 Step 3, with the contentUploads-rename override above)
 - [`context/viability-extraction/Q1-Q7-Decisions.md`](../context/viability-extraction/Q1-Q7-Decisions.md) — locked architectural decisions
-- [`context/viability-extraction/inventory.md`](../context/viability-extraction/inventory.md) — V-ONLY file inventory (calc engines at §1.2)
-- [`context/viability-extraction/app-tsx-anatomy.md`](../context/viability-extraction/app-tsx-anatomy.md) — App.tsx → Router map (referenced from Step 9)
-- [`context/viability-extraction/pre-extraction-punch-list.md`](../context/viability-extraction/pre-extraction-punch-list.md) — orphan corrections + html2canvas + RLS dead branch
-- [`context/viability-extraction/phase-2.5-hub-viability-spec.md`](../context/viability-extraction/phase-2.5-hub-viability-spec.md) — what mojo_business builds after Phase 2 (informational)
+- [`context/viability-extraction/inventory.md`](../context/viability-extraction/inventory.md) — V-ONLY file inventory (note: missed `hoursVisualization/` and `contentUploads.ts`; treat as under-catalogued)
+- [`context/viability-extraction/app-tsx-anatomy.md`](../context/viability-extraction/app-tsx-anatomy.md) — App.tsx → Router map
+- [`context/viability-extraction/pre-extraction-punch-list.md`](../context/viability-extraction/pre-extraction-punch-list.md) — orphan corrections
+- [`context/viability-extraction/phase-2.5-hub-viability-spec.md`](../context/viability-extraction/phase-2.5-hub-viability-spec.md) — informational, post-Phase-2
 
-**Repo state:**
-- Bootstrap commit: `2950ee62c545951233a68f2e4aeab624063f9e6c` on `main`
-- Vercel project ID: `prj_l2qLAIv0NYO2AhjRCOk5edndAR8s` (team `team_XyuNnBgnoA27Ap6tDVtMaASP`, slug `mschaapvelds-projects`)
-- Supabase project ID (shared with mojo_business): `zaxzzvluytxtbsjxlzkg`
-- mojo_business `pre-phase-c-deletion` git tag: commit `2fc45f7` on origin — recovery anchor for Steps 2–11
-
-**Auth surface:**
-- `<AuthProvider>` exposes only `{ user, isLoading, signIn, signUp, signOut }` (deliberately minimal; expand only if a future step needs more)
-- Supabase client localStorage namespace: `mojo-viability-auth` (separate from mojo_business's `mojobusiness-auth`)
-- Dev-only debug aid: `window.supabase` exposed in dev mode for console smoke; intentionally NOT exposed in production builds
+**Auth surface (unchanged from Step 1):**
+- `<AuthProvider>` exposes only `{ user, isLoading, signIn, signUp, signOut }`
+- Supabase client localStorage namespace: `mojo-viability-auth`
+- `window.supabase` exposed in dev only
