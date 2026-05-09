@@ -26,12 +26,11 @@ If a dispatch arrives that doesn't reference a specific step, **confirm with Max
 
 ## Session Start Checklist
 
-Before writing any code:
-
-1. Read [`context/viability-extraction/extraction-plan-2026-05-09.md`](context/viability-extraction/extraction-plan-2026-05-09.md) first — it reconciles the older planning docs against post-rebuild reality.
-2. If a `handover/HANDOVER.md` exists, read it for the previous session's context.
-3. Confirm with Max which Phase 2 step (or other task) is in scope for this session.
-4. State what you plan to do before doing it.
+At the start of every session, before writing any code:
+1. Read `handover/HANDOVER.md` — understand where the last session ended
+2. **Read `context/viability-extraction/extraction-plan-2026-05-09.md`** end-to-end before doing anything else if you haven't already this session — it reconciles the older planning docs against post-rebuild reality and is the entry point for the whole extraction.
+3. Confirm with Max what the focus is for this session
+4. State what you plan to do before doing it
 
 ---
 
@@ -91,12 +90,33 @@ No test framework is configured.
 
 ---
 
-## End of Session
+## End of Session — Handover
 
-Write a handover doc to `handover/HANDOVER.md` summarising:
-- What was completed (which step + which sub-tasks)
-- Acceptance criteria status (each `[ ]` ticked or noted blocked)
-- Any decisions Max made during the session
-- Next concrete step + estimated time
+At the end of every session, write a handover document to `handover/HANDOVER.md`.
+Do this without being asked whenever a session is wrapping up or Max says goodbye.
 
-Keep handovers concise — they're the bridge between sessions.
+# Mojo Viability Handover — {date}
+
+## Session Summary
+{1-2 sentences on what this session covered}
+
+## Completed
+{bullet list of everything finished}
+
+## In Progress
+{anything started but not finished}
+
+## Blockers
+{anything blocking next steps}
+
+## Next Session
+{ordered list of what to tackle next}
+
+## Key References
+{any component names, Supabase table names, planning-doc sections, or config values relevant to next session}
+
+---
+
+## Session Trigger
+
+If the user says "go", immediately read `handover/HANDOVER.md` and output a summary of the last session, then ask what to focus on this session. Do not wait to be asked.
