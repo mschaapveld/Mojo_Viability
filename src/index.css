@@ -1,0 +1,269 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fonts loaded via <link> in index.html for reliability */
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --background: 30 15% 97%;
+    --foreground: 20 15% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 15% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 15% 8%;
+    --primary: 20 15% 8%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 30 8% 93%;
+    --secondary-foreground: 20 15% 8%;
+    --muted: 30 8% 93%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 30 8% 93%;
+    --accent-foreground: 20 15% 8%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 18 82% 54%;
+    --radius: 0.5rem;
+
+    /* Brand */
+    --brand: 18 82% 54%;
+    --brand-foreground: 0 0% 100%;
+
+    /* Semantic */
+    --success: 152 60% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 9%;
+    --info: 210 70% 50%;
+    --info-foreground: 0 0% 100%;
+
+    /* Surfaces */
+    --surface-0: 30 15% 97%;
+    --surface-1: 0 0% 100%;
+    --surface-2: 214 32% 97%;
+    --surface-3: 214 32% 94%;
+
+    /* Sidebar — slightly darker for contrast against content */
+    --sidebar: 220 10% 12%;
+    --sidebar-foreground: 0 0% 94%;
+    --sidebar-border: 0 0% 100% / 0.08;
+
+    /* Charts */
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  /* Explicit light override — used on child elements to force light mode
+     even when <html> has data-theme="dark" */
+  [data-theme="light"] {
+    --background: 30 15% 97%;
+    --foreground: 20 15% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 15% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 15% 8%;
+    --primary: 20 15% 8%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 30 8% 93%;
+    --secondary-foreground: 20 15% 8%;
+    --muted: 30 8% 93%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 30 8% 93%;
+    --accent-foreground: 20 15% 8%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 18 82% 54%;
+    --brand: 18 82% 54%;
+    --brand-foreground: 0 0% 100%;
+    --success: 152 60% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 9%;
+    --info: 210 70% 50%;
+    --info-foreground: 0 0% 100%;
+    --surface-0: 30 15% 97%;
+    --surface-1: 0 0% 100%;
+    --surface-2: 214 32% 97%;
+    --surface-3: 214 32% 94%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    color-scheme: light;
+  }
+
+  [data-theme="dark"] {
+    --background: 0 0% 4%;
+    --foreground: 30 25% 95%;
+    --card: 0 0% 6%;
+    --card-foreground: 30 25% 95%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 30 25% 95%;
+    --primary: 30 25% 95%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 30 25% 95%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 78%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 30 25% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 100% / 0.08;
+    --input: 0 0% 100% / 0.12;
+    --ring: 18 82% 54%;
+
+    /* Brand stays consistent */
+    --brand: 18 82% 54%;
+    --brand-foreground: 0 0% 100%;
+
+    /* Semantic */
+    --success: 152 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 9%;
+    --info: 210 70% 55%;
+    --info-foreground: 0 0% 100%;
+
+    /* Dark surface scale */
+    --surface-0: 0 0% 4%;
+    --surface-1: 0 0% 6%;
+    --surface-2: 0 0% 8%;
+    --surface-3: 0 0% 10%;
+
+    /* Sidebar */
+    --sidebar: 0 0% 6%;
+    --sidebar-foreground: 30 25% 95%;
+    --sidebar-border: 0 0% 100% / 0.08;
+
+    /* Charts */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "tnum";
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  /* Page typography */
+  .page-title {
+    @apply font-heading text-2xl font-bold text-foreground;
+  }
+  .section-title {
+    @apply font-heading text-lg font-semibold text-foreground;
+  }
+  .body-text {
+    @apply font-sans text-sm text-foreground;
+  }
+  .label-text {
+    @apply font-sans text-xs font-medium text-muted-foreground;
+  }
+  .caption-text {
+    @apply font-sans text-xs text-muted-foreground;
+  }
+
+  /* Table utility classes */
+  .table-header-cell {
+    @apply font-sans text-xs font-semibold text-muted-foreground uppercase tracking-wider
+      px-4 py-2.5 text-left bg-surface-1 border-b border-border whitespace-nowrap;
+  }
+  .table-data-cell {
+    @apply font-sans text-sm text-foreground px-4 py-2.5 border-b border-border/50 whitespace-nowrap;
+  }
+
+  /* Dark card */
+  .mojo-card {
+    @apply bg-card border border-border rounded-xl p-6;
+  }
+
+  /* Form elements */
+  .mojo-input {
+    @apply w-full bg-surface-3 border border-input rounded-md px-3 py-2 text-sm text-foreground
+      placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand
+      transition-colors;
+  }
+  .mojo-label {
+    @apply block text-xs font-medium text-muted-foreground mb-1.5;
+  }
+
+  /* Metric cards */
+  .metric-card {
+    @apply bg-card border border-border rounded-lg p-4;
+  }
+  .metric-label {
+    @apply text-xs font-medium text-muted-foreground mb-1;
+  }
+  .metric-value {
+    @apply text-2xl font-bold text-foreground tabular-nums;
+  }
+}
+
+/* Root container fix */
+#root {
+  background: #f8f6f2;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+[data-theme="dark"] #root {
+  background: #0a0a0a;
+}
+
+/* Override browser autofill styles on dark inputs */
+input.dark-input:-webkit-autofill,
+input.dark-input:-webkit-autofill:hover,
+input.dark-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #1e1e1e inset !important;
+  -webkit-text-fill-color: #f5f2ed !important;
+  caret-color: #f5f2ed !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Google Places Autocomplete dropdown positioning fix */
+.pac-container {
+  z-index: 10000 !important;
+  margin-top: 2px !important;
+}
+
+/* Ensure autocomplete items are clickable */
+.pac-item {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}

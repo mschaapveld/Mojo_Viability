@@ -1,0 +1,19 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: 'mojo-viability-auth',
+  },
+});
+
+// Expose to window in dev so the bootstrap smoke test can run
+// `await supabase.auth.signInWithPassword(...)` from the browser console.
+if (import.meta.env.DEV) {
+  (window as unknown as { supabase: typeof supabase }).supabase = supabase;
+}
