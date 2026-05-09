@@ -283,7 +283,6 @@ export default function LandingPage({ onLaunch, onNavigate, onViability }: Landi
                     src={src}
                     alt={caption}
                     decoding="async"
-                    fetchPriority={i === 0 ? 'high' : 'auto'}
                     style={{ width: `${w}px`, height: `${h}px`, objectFit: 'cover', display: 'block' }}
                   />
                 </div>
@@ -354,7 +353,6 @@ export default function LandingPage({ onLaunch, onNavigate, onViability }: Landi
                     alt={card.tag}
                     loading="lazy"
                     decoding="async"
-                    fetchPriority="low"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
                   <div

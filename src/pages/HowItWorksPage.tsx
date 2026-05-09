@@ -96,7 +96,6 @@ export default function HowItWorksPage({ onLaunch, onNavigate, onViability }: Ho
                   src={src}
                   alt={caption}
                   decoding="async"
-                  fetchPriority={i === 0 ? 'high' : 'auto'}
                   style={{ width: `${w}px`, height: `${h}px`, objectFit: 'cover', display: 'block' }}
                 />
               </div>
