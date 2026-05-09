@@ -1,94 +1,78 @@
-# Mojo Viability Handover — 2026-05-09 (Step 8)
+# Mojo Viability Handover — 2026-05-09 (Step 9)
 
 ## Session Summary
 
-Step 8 of the 12-step extraction plan: **smallest step in the plan**, executed cleanly. `useAutoSave` consolidated to its proper home (`src/features/project/hooks/useProjectAutoSave.ts`) and `useKeyboardShortcuts` ported. Three sub-agent fan-outs all returned clean. Typecheck + build remain GREEN throughout. Vercel stays green on `5732982`. Cumulative inventory misses still 8. Next: Step 9 — App.tsx → Router (the biggest single step in the plan, 6–8h).
+Step 9 of the 12-step extraction plan: **the biggest single step in the plan**, executed across 4 phases (A: scaffold, B: route components, C: project route tree, D: protected pages). `App.tsx` rewritten end-to-end with `react-router-dom`; 9 new files added; 4 sub-agent fan-outs (route verification, provider audit, post-wire runtime audit, plus Step-9-internal smokes) — all passed. Module count exploded from 141 → 2,534 (6× the predicted 400+, all ports now entry-reachable for the first time). Typecheck + build GREEN. WARN #2 fix applied. Cascade theory not exercised (no TS2307 churn). Next: Step 10 — DB migrations.
 
 ## Completed
 
-**Hook consolidation (1 file, rename + move + identifier rename)**
-- `src/hooks/useAutoSave.ts` → [src/features/project/hooks/useProjectAutoSave.ts](src/features/project/hooks/useProjectAutoSave.ts)
-- `git mv` used; rename detected at 98% similarity (history preserved)
-- Function rename: `export function useAutoSave` → `export function useProjectAutoSave`
-- Per [anatomy §6.3](../context/viability-extraction/app-tsx-anatomy.md) — clarity rename for the project-level autosave
-- Recap: `useAutoSave.ts` was originally surfaced as inventory-miss #8 in Step 5's pre-emptive audit and parked at `src/hooks/`. Step 8 now consolidates it to its proper home in `src/features/project/hooks/`.
+**`App.tsx` full rewrite (1 file)**
+- [src/App.tsx](src/App.tsx) — replaces the bootstrap `<HelloUser>` smoke with full router wiring per [anatomy §4](../context/viability-extraction/app-tsx-anatomy.md)
+- Provider chain order: `QueryProvider > ThemeProvider > ToastProvider > BrowserRouter > AuthProvider`
+- Public routes: `/`, `/how-it-works`, `/reach-out`, `/start`, `/privacy`, `/terms`, `/auth`
+- Auth-gated: `/projects`, `/welcome`, `/project/:id/*` (12 sub-routes)
+- Onboarding: `/project/accept-invite` (internal auth gate, intentional asymmetry)
+- 404 catch-all: `path="*"` → `<NotFoundPage>`
+- `useLandingNav()` hook centralises landing-page navigation; 4 wrapper components (`LandingPageRoute`, `HowItWorksPageRoute`, `ReachOutPageRoute`, `StartPageRoute`) adapt React Router's hooks to the component prop shapes from Step 6.
 
-**New hook port (1 file)**
-- `src/hooks/useKeyboardShortcuts.ts` (43 LOC) → [src/features/project/hooks/useKeyboardShortcuts.ts](src/features/project/hooks/useKeyboardShortcuts.ts)
-- Verbatim copy from `/tmp/mojo-business-current/`
-- Single import (`useEffect` from `react`); zero `@/`-paths
-- **No consumers yet** — Step 9's App.tsx → Router rewrite will wire it up
+**9 new files added**
+- [src/features/project/components/RequireAuth.tsx](src/features/project/components/RequireAuth.tsx) — auth gate; redirects to `/auth` with `state.from` preserved
+- [src/features/project/components/ProjectLayout.tsx](src/features/project/components/ProjectLayout.tsx) — `useProject(id)` query, `ProjectContext` provider, `<Outlet />`, `navigateTab()` helper, loading + not-found states
+- [src/features/project/hooks/useProject.ts](src/features/project/hooks/useProject.ts) — TanStack Query wrapper around Supabase fetch from `business_scenarios` (uses `.maybeSingle()` so missing rows return `null`, not error)
+- [src/features/project/pages/ProjectsListPage.tsx](src/features/project/pages/ProjectsListPage.tsx) — lists user's projects via `loadProjects()` (manual `useEffect` + active-flag pattern; logged as future-cleanup)
+- [src/features/project/pages/InviteAcceptancePage.tsx](src/features/project/pages/InviteAcceptancePage.tsx) — placeholder; reads token from search params, defers unauthed → `/auth?from=invite&token=X` (real acceptance logic is genuine TODO)
+- [src/features/project/routes.tsx](src/features/project/routes.tsx) — 12 wrapper components, one per tab, each consuming `useProjectContext()` and adapting to the page's prop shape
+- [src/pages/AuthPage.tsx](src/pages/AuthPage.tsx) — sign-in / sign-up form using `useAuth().signIn` / `signUp` (Promise<void>, throws on error)
+- [src/pages/NotFoundPage.tsx](src/pages/NotFoundPage.tsx) — 404 page with link back to `/`
+- [src/pages/WelcomePage.tsx](src/pages/WelcomePage.tsx) — simplified post-signup form (firstName, lastName, town) writing to `profiles` table
 
-**Consumer update (1 file)**
-- [src/features/project/components/SaveStatusIndicator.tsx:2](src/features/project/components/SaveStatusIndicator.tsx#L2) — import path rewritten from `@/hooks/useAutoSave` to `@/features/project/hooks/useProjectAutoSave`. Imported symbol stays `SaveStatus` (it's a type-only import; the rename only affected the file path).
-- Sub-agent #2 confirmed SaveStatusIndicator was the SOLE consumer (just one type-only import; no hook function call sites in the repo).
+**ProjectLayout type guard tightened (WARN #2 fix)**
+- [src/features/project/components/ProjectLayout.tsx:47-52](src/features/project/components/ProjectLayout.tsx#L47-L52) — `useEffect` now hoists `query.data?.data` into `nextData` and only sets state when truthy, eliminating the unconstrained `as ProjectData` cast inside the previous `if (query.data)` guard.
 
-**Sub-agent fan-out execution log — three this step, all clean**
-- **Fan-out #1 (source verification for useKeyboardShortcuts):** found at canonical path in both clones, identical, 43 LOC, single React import. Tested clean.
-- **Fan-out #2 (consumer audit for useAutoSave rename):** only `SaveStatusIndicator.tsx` line 2 imports it (`SaveStatus` type-only). No other consumers anywhere in the repo. Tested clean.
-- **Fan-out #3 (import audit on useKeyboardShortcuts post-rewrite):** bucket A only — single React import, no `@/`-paths, no inventory misses, no Mojo-360 platform-membership leakage. Tested clean.
+**Mechanical fix from Phase B**
+- 2 landing-page files had `fetchPriority` JSX prop deleted (React 18 + TypeScript: TS wants camelCase, React 18 warns on it). Files: [LandingPage.tsx](src/pages/LandingPage.tsx), [HowItWorksPage.tsx](src/pages/HowItWorksPage.tsx).
+
+**Sub-agent fan-out execution log — 4 this step, all clean**
+- **Fan-out #1 (route verification):** confirmed all 12 tab pages from Step 4 export the expected names + accept compatible prop shapes for the routes.tsx wrappers. Tested clean.
+- **Fan-out #2 (provider audit):** confirmed provider chain order matches anatomy §6.1; AuthProvider lives inside BrowserRouter (so `useNavigate` works inside auth callbacks). Tested clean.
+- **Fan-out #3 (post-wire runtime audit):** flagged 1 BLOCK + 4 WARNs. Strategic-advisor adjudication: apply WARN #2 fix only; reclassify BLOCK and remaining WARNs as Phase-2.5 / future-cleanup follow-ups.
+- **Step-9-internal Playwright smokes:** 5 URLs (`/`, `/start`, `/auth`, `/nonsense-xyz`, `/project/test-id-xyz/break-even`) — all rendered with 0 console errors. Auth gate fires correctly on `/projects`, `/project/:id/*`, `/welcome`.
 
 **Verification**
 - `npm run typecheck`: **GREEN** (exit 0, zero errors)
-- `npm run build`: **GREEN** (141 modules, 440 KB JS / 59 KB CSS, 955 ms)
+- `npm run build`: **GREEN** (2,534 modules, 3.92s)
 
 **Commits + push**
-- Step 8 commit: `5732982 feat: consolidate useAutoSave + import useKeyboardShortcuts (Step 8 of viability extraction)` — pushed to `origin/main` (`a395809..5732982`)
-- 3 files changed (1 rename at 98% similarity + 1 new + 1 modified import line), 45 insertions, 2 deletions
-- **Vercel stays GREEN** — production transitions from Step 7 to Step 8
+- Step 9 commit: `feat: wire router and route tree (Step 9 of viability extraction)` — pushed to `origin/main`
+- **Vercel will redeploy with this commit. First time real route logic ships to mojobusiness.ai infrastructure** — watch this deploy.
 
 ## In Progress
 
-None — Step 8 complete.
+None — Step 9 complete.
+
+## Phase 2.5 / future-cleanup follow-ups (logged from Step 9 audit)
+
+These were surfaced by Section 9's runtime audit and reclassified as deferred work — none block Step 10:
+
+- **Phase 2.5 ([anatomy §6.4](../context/viability-extraction/app-tsx-anatomy.md)):** `StartPage`'s "Try as guest" routes to `/projects`, which is auth-gated → redirects to `/auth` instead of providing a guest experience. Guest-mode plumbing (localStorage draft hand-off) deferred to Phase 2.5. Audit flagged as block; reclassified by strategic-advisor — feature gap, not runtime crash.
+- **Phase 2.5 ([anatomy §6.3](../context/viability-extraction/app-tsx-anatomy.md)):** `InviteAcceptancePage` is a placeholder. Token acceptance logic is genuine TODO.
+- **Future-cleanup:** `ProjectsListPage` uses `useEffect` + manual fetch instead of `useQuery`. Active-flag mitigates the obvious race; refactor to `useQuery` when convenient.
+- **Documented pattern:** `InviteAcceptancePage`'s auth gate is internal (asymmetric vs other protected routes which use `<RequireAuth>` at the route level). Intentional per anatomy — invite flow needs to display "missing token" UI even when unauthenticated.
 
 ## Blockers
 
-None blocking Step 9.
+None blocking Step 10.
 
 **Carried over (still outstanding for Max outside the session):**
 - Rotate the password for `admin@maxsenterprises.com.au` in Supabase. Plaintext leaked in Step 1 chat; treat as compromised.
 
 ## Next Session
 
-**Step 9 — App.tsx → Router rewrite.** Per [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) §3 Step 9. **The biggest single step in the plan: 6–8h estimated.** This is where the structural rebuild happens.
+**Step 10 — DB migrations.** Per [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) §3 Step 10. Move ownership of the 4 V-ONLY tables (`business_scenarios`, `project_invites`, `project_content_uploads`, `collaborators`) from `mojo_business`'s migrations folder into this repo's. Shared Supabase project — coordinate carefully. **Migrations affect production data — confirm with Max before running anything against the remote project.**
 
-**What Step 9 does (per plan):**
-- Replace the current bootstrap `App.tsx` (which renders only `<HelloUser>`) with a proper App + Router using `react-router-dom`
-- Build out the route tree per [app-tsx-anatomy.md §4](../context/viability-extraction/app-tsx-anatomy.md):
-  - Public landing routes: `/`, `/how-it-works`, `/reach-out`, `/start`, `/privacy`, `/terms`, `/login`
-  - `/project/:id/*` editor tree with 12 sub-routes (one per tab page from Step 4)
-- Replace App.tsx state with React Query (per anatomy §6.1):
-  - `useProject(id)` as the canonical project read
-  - `useUpdateProjectData()` as the autosave-debounced write
-- Wire up the project layout shell:
-  - `<ProjectLayout>` with `<ProjectSideNav>`, `<BusinessSnapshot>`, `<Outlet />` for tab content
-  - Save / share / export wiring
-  - Autosave (using `useProjectAutoSave` from Step 8)
-  - Keyboard shortcuts (using `useKeyboardShortcuts` from Step 8)
-  - Walkthrough navigation
-- Wire up the landing → start → guest/signup → project flow
-
-**Step 9 acceptance:**
-1. Typecheck + build remain GREEN
-2. **`npm run dev` smoke test must pass:** sign-in, navigate to `/project/<id>`, every tab renders, autosave fires on edit, sign-out works, landing pages render. **This is the first step where end-to-end UI verification matters** — module count in build will jump significantly (currently 141; expected to reach 400+ as all the ported files become entry-reachable for the first time).
-3. **Bundle size sanity check:** `dist/` after Step 9's build should be in the same ballpark as mojo_business's pre-extraction size (per plan §3 Step 7 "comparable to mojo_business's").
-
-**Cumulative standard mechanical rewrites (still 7, still active):**
-1. `@/shared/components/ui/X` → `@/components/ui/X`
-2. `../../lib/X` and `../lib/X` → `@/lib/X`
-3. `@/components/<NAME>` → `@/features/project/components/<NAME>` for the cumulative 12-component forward-pointer list
-4. `@/app/providers/X` → `@/providers/X`
-5. `../hooks/X` and `../../hooks/X` → `@/hooks/X`
-6. `@/lib/projects` / `@/lib/permissions` → `@/features/project/api/<projectsApi|permissionsApi>`
-7. `@/features/<feature>/components/<NAME>` → `@/components/<NAME>` when destination is top-level
-
-**Step 9 caveats:**
-- This is mostly a write-step (authoring the new App.tsx + Router), not a port-step. Path-shift mechanical rewrites apply less than in prior steps.
-- The anatomy doc captures App.tsx's *shape* (state slices, handlers, fan-in branches, cross-section sync logic, risk register) — use as the "what to author" reference. The current mojo_business `App.tsx` is gone (deleted in Phase C-light); recoverable as text from `/tmp/mojo-pre-phase-c/src/App.tsx` if needed for byte-level reference.
-- Sub-agent fan-out pattern can still help: e.g. one agent to audit anatomy.md against the actual ported components for fitness, another to scan for any remaining inventory misses surfaced by the wiring.
-- Step 9 needs its own structured dispatch from Max's Claude.ai strategic-advisor session.
-
-**Mojo-360-strip pattern alert continues:** if Step 9's wiring exposes calls into platform-membership concepts (any consumer trying to use `useBusinessContext`, `useActiveBusinessId`, `usePlatformRole`, or platform RPCs), surface for adjudication.
+After Step 10:
+- **Step 11 — Browser smoke** (per plan §3 Step 11): full end-to-end UX verification on the deployed Vercel preview. Sign-in, project creation, every tab, autosave, sign-out, landing flow.
+- **Step 12 — Mojo 360 cleanup** (per plan §3 Step 12): in the *other* repo. Remove the V-ONLY surfaces from `mojo_business` once mojo_viability is verified live.
 
 ## Key References
 
@@ -107,10 +91,19 @@ None blocking Step 9.
 - Step 6 handover: `aca502c`
 - Step 7 commit: `590ce47` (Vercel green)
 - Step 7 handover: `a395809`
-- **Step 8 commit: `5732982` — Vercel green, production updates to Step 8**
+- Step 8 commit: `5732982` (Vercel green)
+- Step 8 handover: (this file's prior version)
+- **Step 9 commit: `d9b883f` — first commit shipping real route logic to mojobusiness.ai infrastructure (watch this Vercel deploy)**
 - Branch: `main`
 
-**Cumulative inventory misses (still 8 — Step 8 added zero):**
+**Step 9 metrics:**
+- Module count: **141 → 2,534** (6× the predicted 400+; all ports now entry-reachable for the first time)
+- New files: 9
+- Modified files: App.tsx (full rewrite), 2 landing pages (`fetchPriority` cleanup)
+- Sub-agent fan-outs: 4
+- Cascade theory: **not exercised** (no TS2307 churn — Router-wiring was a write-step, not a port-step)
+
+**Cumulative inventory misses (still 8 — Step 9 added zero):**
 
 | # | File | Step surfaced | LOC |
 |---:|---|---|---:|
@@ -121,7 +114,16 @@ None blocking Step 9.
 | 5 | `src/lib/liquorLicences.ts` | 4 | 116 |
 | 6 | `src/lib/naturalLanguageParser.ts` | 4 | 432 |
 | 7 | `src/lib/calculations.ts` | 4 (second-pass) | 24 |
-| 8 | `src/hooks/useAutoSave.ts` (now consolidated to `src/features/project/hooks/useProjectAutoSave.ts`) | 5 (Step 8 consolidated) | 121 |
+| 8 | `src/hooks/useAutoSave.ts` (consolidated to `src/features/project/hooks/useProjectAutoSave.ts` in Step 8) | 5 | 121 |
+
+**Cumulative standard mechanical rewrites (still 7, still active):**
+1. `@/shared/components/ui/X` → `@/components/ui/X`
+2. `../../lib/X` and `../lib/X` → `@/lib/X`
+3. `@/components/<NAME>` → `@/features/project/components/<NAME>` for the cumulative 12-component forward-pointer list
+4. `@/app/providers/X` → `@/providers/X`
+5. `../hooks/X` and `../../hooks/X` → `@/hooks/X`
+6. `@/lib/projects` / `@/lib/permissions` → `@/features/project/api/<projectsApi|permissionsApi>`
+7. `@/features/<feature>/components/<NAME>` → `@/components/<NAME>` when destination is top-level
 
 **Architectural strip log (deliberate adaptations away from Mojo 360 concepts):**
 - Step 1: `<AuthProvider>` stripped of `is_super_user`, `is_advisor`, `signInWithProvider`, `OrgProvider`
@@ -129,17 +131,17 @@ None blocking Step 9.
 
 **Cleanup tracker:**
 - ✓ Step 7: 2 `@ts-expect-error` directives in AIBusinessPlanPage.tsx — REMOVED.
-- (No new cleanup tracker entries from Step 8.)
+- (No new cleanup tracker entries from Step 9.)
 
-**Cascade theory status: 4-for-4 confirmed.** Step 8 didn't exercise it (no expected red baseline). Step 9 may or may not depending on how Router-wiring goes.
-
-**Step 8 hooks now at `src/features/project/hooks/`:**
-- `useProjectAutoSave.ts` (was `useAutoSave`) — exports `useProjectAutoSave` function + `SaveStatus` type
-- `useKeyboardShortcuts.ts` — exports `useKeyboardShortcuts` function (no consumer yet)
+**Step 9 architectural decisions:**
+- `<RequireAuth>` wraps protected routes at the route level (`<RequireAuth><Page /></RequireAuth>`); `<InviteAcceptancePage>` does its auth check internally (asymmetric — intentional, see Phase 2.5 follow-ups).
+- `ProjectContext` exposes `{ projectId, projectName, projectData, patchProjectData, navigateTab }`. `setProjectData` deliberately not in the public context (the previous draft tripped a `Dispatch<SetStateAction>` mismatch; `patchProjectData` is the consumer-facing API).
+- `PROJECT_TAB_ROUTES` map in `ProjectLayout.tsx` translates legacy tab keys (`simple`, `detailed`, `ai-business-plan`, `plan-builder`, etc.) to URL slugs so existing `onNavigate` calls inside ported pages keep working.
+- 12 route wrappers in `routes.tsx` adapt `ProjectContext` to each page's prop shape — pages weren't refactored to consume the context directly (would have churned every page; route-wrapper pattern keeps Step 9 a write-step rather than a port-step).
 
 **Source clones in /tmp:**
 - `/tmp/mojo-business-current/` — current main, used Steps 2–3, 7, 8
-- `/tmp/mojo-pre-phase-c/` — `pre-phase-c-deletion` tag at commit `2fc45f7`, used Steps 4–6. The original `App.tsx` (deleted in Phase C-light) is recoverable from this clone as text reference for Step 9.
+- `/tmp/mojo-pre-phase-c/` — `pre-phase-c-deletion` tag at commit `2fc45f7`, used Steps 4–6
 
 **Auth surface (unchanged):**
 - `<AuthProvider>` exposes only `{ user, isLoading, signIn, signUp, signOut }`
@@ -148,9 +150,9 @@ None blocking Step 9.
 
 **Planning docs (read in order at session start):**
 - [`context/viability-extraction/extraction-plan-2026-05-09.md`](../context/viability-extraction/extraction-plan-2026-05-09.md) — reconciliation plan, read first
-- [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) — the 12-step plan
+- [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) — the 12-step plan (**Step 10 = next**)
 - [`context/viability-extraction/Q1-Q7-Decisions.md`](../context/viability-extraction/Q1-Q7-Decisions.md) — locked architectural decisions
 - [`context/viability-extraction/inventory.md`](../context/viability-extraction/inventory.md) — V-ONLY inventory (treat as under-catalogued; 8 misses surfaced so far)
-- [`context/viability-extraction/app-tsx-anatomy.md`](../context/viability-extraction/app-tsx-anatomy.md) — App.tsx → Router map (**critical reference for Step 9**)
+- [`context/viability-extraction/app-tsx-anatomy.md`](../context/viability-extraction/app-tsx-anatomy.md) — App.tsx → Router map (used heavily for Step 9; §6.4 covers the Phase 2.5 guest-mode follow-up)
 - [`context/viability-extraction/pre-extraction-punch-list.md`](../context/viability-extraction/pre-extraction-punch-list.md) — orphan corrections
 - [`context/viability-extraction/phase-2.5-hub-viability-spec.md`](../context/viability-extraction/phase-2.5-hub-viability-spec.md) — informational, post-Phase-2
