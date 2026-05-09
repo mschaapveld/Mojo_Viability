@@ -1,83 +1,98 @@
-# Mojo Viability Handover — 2026-05-09 (Step 5)
+# Mojo Viability Handover — 2026-05-09 (Step 6)
 
 ## Session Summary
 
-Step 5 of the 12-step extraction plan: **15 new files** (12 features + 1 LoadingScreen + 1 HoursScheduleChart + 1 useAutoSave hook) ported from the `pre-phase-c-deletion` git tag. **Cascade theory confirmed for the third step running** — `npm run typecheck` collapsed from 17 errors (Step 4 baseline) to 0; `npm run build` green. Two HARD STOPs adjudicated by strategic-advisor: pre-emptive lib audit caught inventory miss #8 (`useAutoSave.ts`), then post-typecheck audit caught two new mechanical rewrite patterns (`@/app/providers/*` → `@/providers/*` and `../hooks/*` → `@/hooks/*`). Step-7 export-pipeline forward references handled via 2 `@ts-expect-error` directives (self-cleaning; Step 7 executor removes them when the export module lands). Vercel should now redeploy `c9dbe5f` GREEN — production updates from Step 3's `ce4228a`.
+Step 6 of the 12-step extraction plan: **8 new files** (6 pages + 2 top-level components) ported from the `pre-phase-c-deletion` git tag. **Typecheck + build remain GREEN** throughout — Vercel stays green on this push. Two HARD STOPs adjudicated by strategic-advisor: a 7th mechanical rewrite category surfaced (`@/features/<feature>/components/<NAME>` → `@/components/<NAME>` when destination is top-level), and an architectural strip on HospoOSModal (Option B — removed `useBusinessContext` dependency rather than port the Mojo 360 platform-membership chain). Cumulative inventory misses remain at 8 — Option B avoided adding the platform-membership chain. The 2 `@ts-expect-error` directives in AIBusinessPlanPage stay in place until Step 7 ships the export pipeline.
 
 ## Completed
 
-**Shell + dialogs (12 files at `src/features/project/components/`)**
-- BusinessSnapshot, ProjectSideNav (renamed from Sidebar), NewProjectOriginDialog, SaveProjectCTA, SaveProjectValidationDialog, SaveStatusIndicator, ShareProjectDialog, WalkthroughNavigation, ContentUploadsPanel, HelpDialog, OnboardingTour, GuestBanner
+**Landing + onboarding + legal (8 files)**
+- 6 pages at [src/pages/](src/pages/): `LandingPage` (renamed from `LandingPage1`), `HowItWorksPage`, `ReachOutPage`, `StartPage` (renamed from `ViabilityPath`), `PrivacyPage`, `TermsPage`
+- 2 top-level components at [src/components/](src/components/): `LandingHeader.tsx`, `HospoOSModal.tsx`
 
-**Top-level components (2 files)**
-- `src/components/LoadingScreen.tsx` (top-level, coexists with Step 1's `src/components/ui/LoadingScreen.tsx`; Step 9's App.tsx picks which to use)
-- `src/components/shared/HoursScheduleChart.tsx`
+**File + identifier renames**
+- `LandingPage1.tsx` → `LandingPage.tsx`; identifier `LandingPage1`/`LandingPage1Props` → `LandingPage`/`LandingPageProps` (2 occurrences renamed via `replace_all`)
+- `ViabilityPath.tsx` → `StartPage.tsx`; identifier `ViabilityPath`/`ViabilityPathProps` → `StartPage`/`StartPageProps` (2 occurrences renamed)
 
-**Inventory miss #8 (1 file at `src/hooks/`)**
-- `src/hooks/useAutoSave.ts` (121 LOC) — used only by SaveStatusIndicator. Surfaced by the **new pre-emptive audit pattern** (which audits `@/lib/*` and `@/hooks/*` imports BEFORE running typecheck). First time the pattern caught a miss before typecheck — pattern works as designed. Inline rewrite applied: `@/lib/projects` → `@/features/project/api/projectsApi` (Step 3 rename).
+**HospoOSBanner conditional decision: DROPPED**
+0 importers in the 8 ported files. Per dispatch.
 
-**File + component-identifier rename**
-- `Sidebar.tsx` → `ProjectSideNav.tsx`; identifier `Sidebar`/`SidebarProps` → `ProjectSideNav`/`ProjectSideNavProps` (3 occurrences renamed)
+**Source-path corrections (logged for archaeology)**
+- `LandingHeader.tsx` was at `/tmp/mojo-pre-phase-c/src/features/landing/components/`, not the dispatch-spec'd `src/components/landing/`. Content verified identical.
+- `ViabilityPath.tsx` was at `/tmp/mojo-pre-phase-c/src/features/viability/components/`, not the dispatch-spec'd `src/components/onboarding/`. Content verified identical.
+- Same archaeological pattern as Step 5's GuestBanner discovery — the tag had partial `features/<feature>/` reorganisation underway. Step 7+ should continue cross-referencing both standard `/components/<X>/` AND `/features/<feature>/components/` locations.
 
-**File dropped**
-- `ProjectManager.tsx` — per plan, replaced by `<ProjectsListPage>` route in Step 9
-
-**Five mechanical rewrites applied across all 15 newly-ported files**
-1. `@/shared/components/ui/X` → `@/components/ui/X` (shadcn path shift, ~10+ primitives)
+**Six standard mechanical rewrites applied + one new (7th) surfaced**
+1. `@/shared/components/ui/X` → `@/components/ui/X` (shadcn path shift)
 2. `../../lib/X` and `../lib/X` → `@/lib/X` (relative-to-absolute lib)
-3. `@/components/<NAME>` → `@/features/project/components/<NAME>` for the 12 forward-pointer targets (BusinessSnapshot, SaveProjectCTA, SaveProjectValidationDialog, SaveStatusIndicator, ShareProjectDialog, NewProjectOriginDialog, WalkthroughNavigation, ContentUploadsPanel, HelpDialog, OnboardingTour, onboarding/GuestBanner, layout/Sidebar)
-4. **NEW: `@/app/providers/X` → `@/providers/X`** (provider path shift; mojo_business kept providers at `src/app/providers/`, viability has them at `src/providers/` per Step 1's bootstrap). SaveProjectCTA was the only Step-5 file affected (imported ThemeProvider).
-5. **NEW: `../hooks/X` → `@/hooks/X`** (relative-to-absolute hooks). ShareProjectDialog imported `../hooks/use-toast` which resolved in mojo_business's flat `/components/` layout but breaks in our `/features/project/components/` structure. Same family as the relative-lib rewrite.
+3. `@/components/<NAME>` → `@/features/project/components/<NAME>` (forward-pointers to ported components)
+4. `@/app/providers/X` → `@/providers/X` (provider path shift)
+5. `../hooks/X` and `../../hooks/X` → `@/hooks/X` (relative-to-absolute hooks)
+6. `@/lib/projects` / `@/lib/permissions` → `@/features/project/api/<projectsApi|permissionsApi>` (Step 3 renames)
+7. **NEW — `@/features/<feature>/components/<NAME>` → `@/components/<NAME>`** when destination is top-level (Issue 1 of Step 6's pre-emptive audit). Applied to `@/features/landing/components/LandingHeader` × 3 page files.
 
-Plus: `@/lib/permissions` → `@/features/project/api/permissionsApi` (Step 3 rename, found inside ProjectSideNav).
+**Architectural strip — HospoOSModal Option B**
+HospoOSModal at the tag imported `useBusinessContext` (108 LOC) which transitively pulled `useActiveBusinessId` + `usePlatformRole` + `business_memberships` table reads + impersonation support — the full Mojo 360 platform-membership stack. This contradicts viability's owner-only auth model (Q1-Q7 Q3 + anatomy §2.3 + Step 1's AuthProvider strip).
 
-**Source-path correction logged**
-- `GuestBanner.tsx` was located at `/tmp/mojo-pre-phase-c/src/features/viability/components/GuestBanner.tsx`, NOT at the dispatch-specified `/src/components/onboarding/` path. Content verified identical; ported from the correct path. The pre-phase-c-deletion tag already had partial `features/viability/` structure — relevant archaeology for Steps 6+.
+Surgical strip applied per strategic-advisor adjudication:
+- Removed `import { useBusinessContext } from '@/hooks/useBusinessContext';`
+- Replaced `const { businessId, businessName } = useBusinessContext();` with `const businessId: string | null = null; const businessName: string | null = null;` plus an explanatory comment
+- Form pre-fill paths (`if (businessName) setBizName(businessName)`, `business_id: businessId ?? null`) all already null-tolerant — fall through to non-prefilled state for viability users
+- Modal's external API unchanged; future Mojo 360 use could re-introduce the hook there or pass values as props
 
-**Step-7 forward-reference handling**
-- 2 `@ts-expect-error` directives added to [AIBusinessPlanPage.tsx](src/features/project/pages/AIBusinessPlanPage.tsx) at lines 174 and 187 for the `@/lib/export/exportBusinessPlan` dynamic imports. **Self-cleaning**: TypeScript will error on the directives once Step 7 ships the export module, prompting deletion. Comments include the Step-7 cleanup instruction.
+This is the second deliberate Mojo-360-strip (after Step 1's AuthProvider). **Pattern: "strip the consumer, don't carry the chain."** Step 7+ executor should look for similar consumer-strip opportunities when ported files reach for hooks like `useBusinessContext`, `useActiveBusinessId`, `usePlatformRole`.
 
 **Verification**
 - `npm run typecheck`: **GREEN** (exit 0, zero errors)
-- `npm run build`: **GREEN** (141 modules, 440 KB JS / 57 KB CSS, 952 ms)
-- Cascade theory holds: Step 4's 6 TS7006 cascades in HoursOfOperationPage all vanished as predicted
+- `npm run build`: **GREEN** (141 modules, 440 KB JS / 59 KB CSS, 957 ms)
 
 **Commits + push**
-- Step 5 commit: `c9dbe5f feat: import 14 viability shell + dialog components (Step 5 of viability extraction)` — pushed to `origin/main` (`6c1cd4f..c9dbe5f`)
-- 16 files changed (15 new + 1 modified — AIBusinessPlanPage with directives), 3,157 insertions
-- **Vercel will redeploy `c9dbe5f` GREEN** — production transitions from Step 3's `ce4228a` to Step 5
+- Step 6 commit: `6daaabc feat: import landing pages and onboarding (Step 6 of viability extraction)` — pushed to `origin/main` (`b873d65..6daaabc`)
+- 8 files changed, 2,441 insertions
+- **Vercel stays GREEN** — production transitions to Step 6
 
 ## In Progress
 
-None — Step 5 complete.
+None — Step 6 complete.
 
 ## Blockers
 
-None blocking Step 6.
+None blocking Step 7.
 
 **Carried over (still outstanding for Max outside the session):**
 - Rotate the password for `admin@maxsenterprises.com.au` in Supabase. Plaintext leaked in Step 1 chat; treat as compromised.
 
 ## Next Session
 
-**Step 6 — Landing pages + onboarding.** Per [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) §3 Step 6. Estimated ~2h. Source: same `pre-phase-c-deletion` tag.
+**Step 7 — Export pipeline.** Per [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) §3 Step 7. Estimated 2–3h.
 
-**Step 6 acceptance:** typecheck + build remain GREEN throughout. The 2 `@ts-expect-error` directives in AIBusinessPlanPage stay in place until Step 7 lands.
+The export pipeline lives at `src/lib/export/` in mojo_business. Per [`extraction-plan-2026-05-09.md`](../context/viability-extraction/extraction-plan-2026-05-09.md) §2.1, the export surface partially survived Phase C-light (some files in current main, others at the tag). Step 7's dispatch should determine source-path mix:
+- Verify whether `/tmp/mojo-business-current/src/lib/export/` has the relevant files, OR fall back to `/tmp/mojo-pre-phase-c/src/lib/export/` for missing ones
+- `html2canvas` dependency is already in `package.json` from Step 1's curated deps (per [`pre-extraction-punch-list.md`](../context/viability-extraction/pre-extraction-punch-list.md) §4) — confirm at start
 
-**Cumulative standard mechanical rewrites for Step 6+ dispatches (bake-in pre-emptively):**
+**Step 7 acceptance:**
+1. Typecheck + build remain GREEN
+2. **The 2 `@ts-expect-error` directives in [src/features/project/pages/AIBusinessPlanPage.tsx](src/features/project/pages/AIBusinessPlanPage.tsx) lines 174, 187 must be removed once `@/lib/export/exportBusinessPlan` resolves**. TypeScript will error on them if not removed (self-prompting cleanup).
+
+**Cumulative standard mechanical rewrites for Step 7+ dispatches (bake-in pre-emptively):**
 1. `@/shared/components/ui/X` → `@/components/ui/X` (shadcn path shift)
 2. `../../lib/X` and `../lib/X` → `@/lib/X` (relative-to-absolute lib)
-3. `@/components/<NAME>` → `@/features/project/components/<NAME>` (forward-pointers to ported components — list grows each step)
+3. `@/components/<NAME>` → `@/features/project/components/<NAME>` (forward-pointers to Step-4/5 ported components — list grows each step)
 4. `@/app/providers/X` → `@/providers/X` (provider path shift)
-5. `../hooks/X` → `@/hooks/X` (relative-to-absolute hooks)
-6. `@/lib/projects` → `@/features/project/api/projectsApi` and `@/lib/permissions` → `@/features/project/api/permissionsApi` (Step 3 renames; surfaces in any file that imports those APIs)
+5. `../hooks/X` and `../../hooks/X` → `@/hooks/X`
+6. `@/lib/projects` / `@/lib/permissions` → `@/features/project/api/<projectsApi|permissionsApi>` (Step 3 renames)
+7. **`@/features/<feature>/components/<NAME>` → `@/components/<NAME>`** when destination is top-level (NEW from Step 6)
 
-**Pre-emptive audit pattern (continues from Step 5):**
-Before running typecheck, audit `@/lib/*`, `@/hooks/*`, `@/features/*`, `@/components/*`, `@/providers/*` imports. For each unique path, confirm the target file exists in our repo. If not, check the tag — if it exists at the tag, that's an inventory miss to surface for adjudication. **8 inventory misses across Steps 2/4/5; treat `inventory.md` as unreliable for completeness.**
+**Pre-emptive audit pattern (continues from Step 5/6):**
+Before running typecheck, audit `@/lib/*`, `@/hooks/*`, `@/features/*`, `@/components/*`, `@/providers/*` imports. For each unique path, confirm the target file exists in our repo. If not, check the tag — if it exists at the tag, that's an inventory miss to surface for adjudication.
 
-**Caveats for Step 6:**
-- When looking for files at the tag, cross-reference BOTH `/src/components/<X>/` AND `/src/features/viability/components/` — the rebuild had already partially started reorganising before Phase C-light (GuestBanner discovery).
-- Step 6 needs its own structured dispatch from Max's Claude.ai strategic-advisor session.
+**Mojo-360-strip pattern alert for Step 7+:**
+If ported files import `useBusinessContext`, `useActiveBusinessId`, `usePlatformRole`, `useOrgContext`, `useAdvisorContext`, `useImpersonation`, `OrgProvider`, or similar platform-membership concepts, surface for adjudication. Default playbook: "strip the consumer, don't carry the chain" (analogous to Step 6's HospoOSModal strip + Step 1's AuthProvider strip).
+
+**Caveats for Step 7:**
+- Source-path defensiveness: cross-reference both `/components/<X>/` AND `/features/<feature>/components/` locations at the tag.
+- The export pipeline includes Excel + PDF + Business Plan HTML generation; check for `exceljs` (already in package.json via menuUtils Step 4 inventory miss) and `html2canvas` (already in package.json from Step 1) — likely uses both.
+- Step 7 needs its own structured dispatch from Max's Claude.ai strategic-advisor session.
 
 ## Key References
 
@@ -86,14 +101,16 @@ Before running typecheck, audit `@/lib/*`, `@/hooks/*`, `@/features/*`, `@/compo
 - CLAUDE.md handover patch: `213389e`
 - Step 2 commit: `7c40fa9` (Vercel red, by design)
 - Step 2 handover: `c634ff7`
-- Step 3 commit: `ce4228a` (Vercel green; was production-serving until Step 5)
+- Step 3 commit: `ce4228a` (Vercel green)
 - Step 3 handover: `5e41404`
-- Step 4 commit: `fdafc70` (Vercel red, by design — Shape A+B)
+- Step 4 commit: `fdafc70` (Vercel red, by design)
 - Step 4 handover: `6c1cd4f`
-- **Step 5 commit: `c9dbe5f` — Vercel GREEN, production transitions here**
+- Step 5 commit: `c9dbe5f` (Vercel green; production transitioned here)
+- Step 5 handover: `b873d65`
+- **Step 6 commit: `6daaabc` — Vercel green, production updates to Step 6**
 - Branch: `main`
 
-**Cumulative inventory misses (8 files, ~2,700+ LOC):**
+**Cumulative inventory misses (still 8 — Option B avoided adding platform-membership chain):**
 
 | # | File | Step surfaced | LOC |
 |---:|---|---|---:|
@@ -104,20 +121,20 @@ Before running typecheck, audit `@/lib/*`, `@/hooks/*`, `@/features/*`, `@/compo
 | 5 | `src/lib/liquorLicences.ts` | 4 | 116 |
 | 6 | `src/lib/naturalLanguageParser.ts` | 4 | 432 |
 | 7 | `src/lib/calculations.ts` | 4 (second-pass) | 24 |
-| 8 | `src/hooks/useAutoSave.ts` | **5 (pre-emptive audit)** | 121 |
+| 8 | `src/hooks/useAutoSave.ts` | 5 (pre-emptive audit) | 121 |
+
+**Architectural strip log (deliberate adaptations away from Mojo 360 concepts):**
+- Step 1: `<AuthProvider>` stripped of `is_super_user`, `is_advisor`, `signInWithProvider`, `OrgProvider` (per anatomy §2.3 + Q3)
+- Step 6: `HospoOSModal` stripped of `useBusinessContext` dependency (Option B — hardcoded null businessId/businessName + explanatory comment)
 
 **Step 7 cleanup tracker:**
-- 2 `@ts-expect-error` directives in [AIBusinessPlanPage.tsx](src/features/project/pages/AIBusinessPlanPage.tsx) lines 174, 187 — REMOVE when Step 7 ships `src/lib/export/exportBusinessPlan.ts`. TypeScript will error on the directives if not removed (self-prompting cleanup).
+- 2 `@ts-expect-error` directives in [AIBusinessPlanPage.tsx](src/features/project/pages/AIBusinessPlanPage.tsx) lines 174, 187 — REMOVE when Step 7 ships `src/lib/export/exportBusinessPlan.ts`. TypeScript will error on the directives if not removed.
 
-**Cascade theory status: CONFIRMED for the 3rd step running.**
-- Step 3 → green (theory established)
-- Step 4 → partial-then-green (after path-shift fixes)
-- Step 5 → green
-Diagnostic framework is reliable. Use the falsifiable check on every future step.
+**Cascade theory: not exercised this step (typecheck stayed green throughout — Step 6 didn't introduce expected red).** Theory remains confirmed for Steps 3, 4, 5.
 
 **Source clones in /tmp:**
-- `/tmp/mojo-business-current/` — current main, used Steps 2–3
-- `/tmp/mojo-pre-phase-c/` — `pre-phase-c-deletion` tag at commit `2fc45f7`, used Steps 4–5. Will be used by Steps 6–8.
+- `/tmp/mojo-business-current/` — current main, used Steps 2–3 + likely Step 7 (export pipeline)
+- `/tmp/mojo-pre-phase-c/` — `pre-phase-c-deletion` tag at commit `2fc45f7`, used Steps 4–6 + likely Step 7
 
 **Auth surface (unchanged):**
 - `<AuthProvider>` exposes only `{ user, isLoading, signIn, signUp, signOut }`
