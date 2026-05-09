@@ -18,7 +18,7 @@ interface UseAutoSaveReturn {
   triggerSave: () => Promise<void>;
 }
 
-export function useAutoSave({
+export function useProjectAutoSave({
   projectId,
   projectName,
   projectData,

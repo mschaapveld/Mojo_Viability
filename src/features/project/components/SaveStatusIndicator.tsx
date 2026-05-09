@@ -1,5 +1,5 @@
 import { CheckCircle2, Loader2, AlertCircle, Cloud } from 'lucide-react';
-import { SaveStatus } from '@/hooks/useAutoSave';
+import { SaveStatus } from '@/features/project/hooks/useProjectAutoSave';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
