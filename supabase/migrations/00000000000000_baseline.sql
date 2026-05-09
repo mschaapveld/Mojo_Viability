@@ -1,0 +1,12 @@
+-- Baseline placeholder for the mojo_viability repo.
+--
+-- The 4 V-ONLY tables (business_scenarios, project_invites,
+-- project_content_uploads, collaborators) and their 9 RPCs were created
+-- via mojo_business migrations prior to the viability extraction. The
+-- viability repo's migration history starts forward-only from this
+-- Step-10a migration onward.
+--
+-- For the pre-Step-10 schema history, see mojo_business's
+-- supabase/migrations/. This file exists only as a documentary anchor
+-- so the supabase/migrations/ directory has a recognised baseline; it
+-- is intentionally empty of DDL.
