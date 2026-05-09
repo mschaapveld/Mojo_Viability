@@ -171,7 +171,6 @@ export function AIBusinessPlan({ project, onChange, onNavigate: _onNavigate, pro
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleExportPDF = async () => {
-    // @ts-expect-error - Step 7 ships @/lib/export/exportBusinessPlan; remove this directive after Step 7 lands
     const { exportBusinessPlanPDF } = await import('@/lib/export/exportBusinessPlan');
     const businessName = bp.brandName || project.siteName || 'Business Plan';
 
@@ -184,7 +183,6 @@ export function AIBusinessPlan({ project, onChange, onNavigate: _onNavigate, pro
   };
 
   const handleExportWord = async () => {
-    // @ts-expect-error - Step 7 ships @/lib/export/exportBusinessPlan; remove this directive after Step 7 lands
     const { exportBusinessPlanWord } = await import('@/lib/export/exportBusinessPlan');
     const businessName = bp.brandName || project.siteName || 'Business Plan';
 
