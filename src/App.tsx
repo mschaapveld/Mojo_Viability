@@ -3,6 +3,7 @@ import { QueryProvider } from '@/providers/QueryProvider';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { ToastProvider } from '@/providers/ToastProvider';
 import { AuthProvider } from '@/providers/AuthProvider';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import LandingPage from '@/pages/LandingPage';
 import HowItWorksPage from '@/pages/HowItWorksPage';
 import ReachOutPage from '@/pages/ReachOutPage';
@@ -89,9 +90,10 @@ export default function App() {
     <QueryProvider>
       <ThemeProvider>
         <ToastProvider>
-          <BrowserRouter>
-            <AuthProvider>
-              <Routes>
+          <TooltipProvider>
+            <BrowserRouter>
+              <AuthProvider>
+                <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<LandingPageRoute />} />
                 <Route path="/how-it-works" element={<HowItWorksPageRoute />} />
@@ -148,9 +150,10 @@ export default function App() {
 
                 {/* 404 */}
                 <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </AuthProvider>
-          </BrowserRouter>
+                </Routes>
+              </AuthProvider>
+            </BrowserRouter>
+          </TooltipProvider>
         </ToastProvider>
       </ThemeProvider>
     </QueryProvider>
