@@ -1,133 +1,124 @@
-# Mojo Viability Handover — 2026-05-10 (Step 10a)
+# Mojo Viability Handover — 2026-05-10 (Step 10b)
 
 ## Session Summary
 
-Step 10a — DB migrations. The first production-DDL step in the extraction. Backup gate cleared, drift-check confirmed 6/6 expected pre-apply states, migration `20260509232058_viability_baseline_step10a` authored and applied to live Supabase project `zaxzzvluytxtbsjxlzkg`. Post-apply verification 6/6 match; advisor delta clean (security −4 from dropped SECURITY DEFINER overloads, performance +4 from new indexes + additive RLS, **no new warning categories**). Migration commit pushed; Vercel redeploy irrelevant (no app-code changes). Step 10b — code mutations + cross-section sync — is now unblocked.
+Step 10b — code mutations + cross-section sync. Built the cross-section sync function and period scaling pure functions, wired them through `patchProjectData` (sync) and a synchronous local-state setter (period). Smoke caught two bugs: customFixedCosts entries silently failed to scale (legacy gap, fixed inline), and the original `useUpdateProjectPeriod` mutation hook introduced a cache-vs-local-state race (autosave debounce of 1200ms means cache can be older than local state when user changes period mid-typing). Strategic-advisor adjudicated: remove the period mutation hook entirely, use a synchronous setter that scales local state and lets autosave persist normally. Final shape ships with `useUpdateProjectData` (still useful for explicit syncs) but not `useUpdateProjectPeriod`. The HIGH-severity Step-9b carry-forward (cross-section sync) is **resolved by the sync function**; the related "rent ↔ mortgage swap" feature is reclassified as Phase 2.5 wishlist (never built in mojo_business — it's forward feature work, not a port-fidelity bug).
 
 ## Completed
 
-**Migration files committed**
-- [supabase/migrations/00000000000000_baseline.sql](supabase/migrations/00000000000000_baseline.sql) — documentary stub (chose this over full DDL extraction since the schema already lives in production via mojo_business migrations; the stub serves as the migration-history anchor for Supabase tooling).
-- [supabase/migrations/20260509232058_viability_baseline_step10a.sql](supabase/migrations/20260509232058_viability_baseline_step10a.sql) — forward-only migration (authored from scratch, applied via `apply_migration` MCP call after explicit go-ahead).
+**Cross-section sync — pure function**
+- [src/lib/calculations/crossSectionSync.ts](src/lib/calculations/crossSectionSync.ts) — `applyCrossSectionSync(prev, updates)` returns the merged + synced ProjectData. Two internal helpers mirror property fields when `occupancyType` differs between scenario pairs:
+  - `syncFitoutToDetailed`: copies 8 property fields from financing scenarios into matching detailed scenarios (only when occupancyType differs); also resolves `loanType` (defaults to `'principalAndInterest'` when transitioning to purchasing).
+  - `syncDetailedToFitout`: mirror, but `loanType` is NOT synced back (asymmetric — fitout-side concern).
+- Field set covered (per Section 2 fan-out): `occupancyType`, `propertyPurchasePrice`, `propertyDeposit`, `propertyClosingCosts`, `propertyStampDuty`, `propertyGstPayable`, `propertyInterestRate`, `propertyLoanTerm`. `loanType` covered fitout→detailed only.
+- Loop-safe by design: the `if occupancyType differs` guard means the sync only runs on mode flips (renting↔purchasing), not on every property-field edit. After mode flip, occupancyTypes match → no further sync triggers.
 
-**Schema changes applied to live Supabase** (project `zaxzzvluytxtbsjxlzkg`)
-- DROPPED `Super users can read all business scenarios` policy on `business_scenarios` (punch-list §2 — dead branch, 0 super_admin rows)
-- DROPPED `is_project_owner_check(uuid)` and `is_project_owner_check(uuid, uuid)` overloads (punch-list §3 — unused; no pg_policies or src/ reference either)
-- ADDED `business_scenarios.business_id uuid REFERENCES businesses(id) ON DELETE SET NULL` + partial index `idx_business_scenarios_business_id` (Q2 — viability ↔ 360 linkage)
-- ADDED `business_scenarios.archived_at timestamptz` + partial index `idx_business_scenarios_business_active ON (business_id, updated_at DESC) WHERE archived_at IS NULL` (Phase 2.5 spec §6.2)
-- ADDED 3 new policies on `business_scenarios` (Phase 2.5 spec §7.2–§7.3): `Business members can view linked assessments` (SELECT), `Business owners can update linked assessments` (UPDATE), `Business owners can delete linked assessments` (DELETE) — all gated on `business_memberships.is_active = true` and (for UPDATE/DELETE) `role IN ('owner', 'admin')`
-- ADDED 1 new policy on `project_content_uploads` (Phase 2.5 spec §7.4): `Business members can view uploads of linked assessments` (SELECT)
+**Period scaling — pure function**
+- [src/lib/scaleProjectByPeriod.ts](src/lib/scaleProjectByPeriod.ts) — `scaleProjectByPeriod(prev, newPeriod)` returns ProjectData with numeric fields in `simpleBreakEven` + `detailedBreakEven` (all 3 scenarios) scaled by `multipliers[newPeriod] / multipliers[oldPeriod]` (Weekly=1, Monthly=4.33, Yearly=52).
+- Substring exclusion list preserved verbatim from legacy: `'variable'`, `'percent'`, `'Percent'`, `'Interest'`, `'Term'`.
+- **`customFixedCosts[].value` now scales** — closes a latent gap in the legacy mojo_business `scaleData` which only iterated top-level numeric properties and silently skipped array-of-objects entries.
 
-**Pre-apply drift check** (read-only via `execute_sql`)
+**Mutation hook**
+- [src/features/project/hooks/useUpdateProjectData.ts](src/features/project/hooks/useUpdateProjectData.ts) — TanStack mutation. Reads cached project from `['project', id]`, runs `applyCrossSectionSync`, persists, invalidates cache.
+- **`useUpdateProjectPeriod.ts` was authored then deleted** during smoke — see strategic-advisor diagnosis below.
 
-| check | result | expected | match |
-|---|---|---|---|
-| super_admin_policy | "Super users can read all business scenarios" | (same) | ✓ |
-| is_project_owner_check_overloads | both signatures present | (same) | ✓ |
-| business_id_column | NOT_EXISTS | NOT_EXISTS | ✓ |
-| archived_at_column | NOT_EXISTS | NOT_EXISTS | ✓ |
-| businesses_table_exists | EXISTS | EXISTS | ✓ |
-| platform_roles_super_admin_count | 0 | 0 | ✓ |
+**ProjectLayout wiring**
+- [src/features/project/components/ProjectLayout.tsx](src/features/project/components/ProjectLayout.tsx):
+  - `patchProjectData` now runs `applyCrossSectionSync(prev, patch)` instead of plain spread merge — local state is always sync-coherent; autosave persists the synced shape (no autosave changes needed).
+  - Period sub-header replaced from static `<span>Period: {project.period}</span>` to interactive shadcn `<Select>` with Weekly/Monthly/Yearly options.
+  - `handlePeriodChange` is a synchronous local-state setter: `setProjectData((prev) => prev ? scaleProjectByPeriod(prev, newPeriod) : prev)`. Autosave persists naturally on next debounce tick.
 
-Plus structure verification: `business_memberships` has `business_id`/`user_id`/`is_active`/`role` columns; `project_content_uploads.project_id` is uuid; RLS already enabled on both target tables.
+**Smoke + adjudications during Section 8**
 
-**Post-apply verification**
+Smoke pass 1 — Max ran locally and reported: cross-section sync ✓, autosave ✓, but **fixed-cost fields in `/break-even/detailed` don't scale** when period changes.
+- Investigation: standard fixed costs (rent, insurance, accounting, marketing, utilities, otherFixed, labourMinimumCost) DO scale via the substring-exclusion logic. The gap was specifically `customFixedCosts` (an array of `{id, name, value}` objects — the scaler's top-level iteration didn't reach the `value` property). Same gap existed in legacy mojo_business. Fix applied: explicit `scaleCustomFixedCosts` helper called from a per-scenario wrapper inside the scaler.
 
-| check | result | expected | match |
-|---|---|---|---|
-| super_admin_policy | GONE | GONE | ✓ |
-| is_project_owner_check_overloads | GONE | GONE | ✓ |
-| business_id_column | uuid | uuid | ✓ |
-| archived_at_column | timestamp with time zone | timestamptz | ✓ |
-| businesses_table_exists | EXISTS | EXISTS | ✓ |
-| platform_roles_super_admin_count | 0 | 0 | ✓ |
+Smoke pass 2 — Max re-smoked with strategic-advisor adjudication: discovered a more fundamental bug in the period mutation. **Cache-vs-local-state race:**
+- The original `useUpdateProjectPeriod` hook read cached project data via `queryClient.getQueryData(['project', id])`.
+- Cache lags local state when autosave is mid-debounce (1200ms). User types in a field, then immediately changes period — cache still holds the pre-typing data.
+- Mutation scaled the stale cache, persisted scaled-stale, refetched scaled-stale, useEffect overwrote local state with scaled-stale → **user's typed values vanished**.
+- **Fix:** delete `useUpdateProjectPeriod` entirely. Period change is a pure transform on already-loaded ProjectData — synchronous local-state setter + normal autosave persistence avoids the race.
 
-Policies on `business_scenarios` post-apply: 7 total (4 surviving original + 3 new Phase 2.5). Super_users SELECT policy GONE.
-Policies on `project_content_uploads` post-apply: 5 total (4 surviving original + 1 new Phase 2.5).
+**Verification**
+- `npm run typecheck`: GREEN
+- `npm run build`: GREEN (2,558 → 2,557 modules — net +2 from the +3 new files minus 1 deleted hook)
+- Browser smoke: confirmed by Max — cross-section sync works, period scaling works including custom fixed costs, autosave persists, console clean.
 
-**Advisor delta** (pre-apply baseline → post-apply, no new categories)
-
-| advisor | level | pre | post | Δ | explanation |
-|---|---|---:|---:|---:|---|
-| anon_security_definer_function_executable | WARN | 32 | 30 | −2 | dropped overloads exposed via anon |
-| authenticated_security_definer_function_executable | WARN | 32 | 30 | −2 | dropped overloads exposed via authenticated |
-| auth_leaked_password_protection | WARN | 1 | 1 | 0 | unchanged |
-| public_bucket_allows_listing | WARN | 5 | 5 | 0 | unchanged |
-| rls_policy_always_true | WARN | 1 | 1 | 0 | unchanged |
-| **Security TOTAL** | | **71** | **67** | **−4** | |
-| auth_db_connections_absolute | INFO | 1 | 1 | 0 | unchanged |
-| unindexed_foreign_keys | INFO | 125 | 125 | 0 | new business_id FK is indexed |
-| unused_index | INFO | 43 | 45 | +2 | both new indexes start unused (resolve when Phase 2.5 archive UI ships) |
-| auth_rls_initplan | WARN | 175 | 174 | −1 | small win from dropped super_admin policy |
-| multiple_permissive_policies | WARN | 700 | 703 | +3 | new policies overlap with existing permissive policies (additive RLS — by design) |
-| **Performance TOTAL** | | **1,044** | **1,048** | **+4** | |
-
-All deltas predictable consequences of the migration. **No new advisor categories appeared.**
-
-**Sanity checks**
-- `npm run typecheck`: GREEN (no code changes)
-- `npm run build`: GREEN (no code changes; modules unchanged at 2,555)
-
-**Sub-agent fan-out execution log — 1 dispatched, 1 self-served**
-- Fan-out #1 (drift check on production state): sub-agent declined to run production SQL via the Supabase MCP citing classifier permission (likely a hallucinated permission system). I ran the drift-check query directly via `execute_sql` myself — single read-only query, no need for delegation. Returned 6/6 matches.
-
-**Production-DDL gate (Section 4)**
-- Surfaced complete migration SQL to Max via AskUserQuestion. Strategic-advisor approved with 12 review checks passed including independent verification of `'owner'`/`'admin'` as valid `app_role` enum values. Triple-nested EXISTS in the project_content_uploads policy logged as Phase 2.5 future-cleanup (non-blocking).
-- First `apply_migration` call blocked by auto-mode safety classifier (most-recent user turn was "Tool loaded.", not affirmative). Re-confirmed via second AskUserQuestion → applied successfully.
+**Sub-agent fan-out execution log — 2 dispatches this step**
+- **Fan-out #1 (sync logic in mojo_business):** mapped `handleFitoutFinancingUpdate` (L772–800), `handleDetailedBreakEvenUpdate` (L802–829), `handlePeriodChange` (L686–721) from `/tmp/mojo-pre-phase-c/src/App.tsx`. Returned exact field sets, loop-prevention via occupancyType-differs guard, asymmetric loanType sync. No 360-platform concept usage.
+- **Fan-out #2 (viability destination wiring):** recommended sync inside `patchProjectData` (centralised — local state always synced; autosave dumb). Recommendation accepted.
 
 **Commits + push**
-- Step 10a code commit: `e11ef56 feat: viability schema baseline + drop dead super_admin policy + add business_id + Phase 2.5 schema (Step 10a)` — 2 files (118 insertions).
+- Step 10b code commit: `3024833 feat: cross-section sync + period scaling + mutation hooks (Step 10b)` — 4 files, 228 insertions, 5 deletions.
 - Handover commit: pending push (this commit).
 
 ## In Progress
 
-None — Step 10a complete.
+None — Step 10b complete. The HIGH-severity Step-9b carry-forward is resolved.
 
 ## Phase 2.5 / future-cleanup follow-ups
 
-Severity-tagged. New entries from Step 10a flagged with **(10a)**.
+6 items total (severity-tagged). Reclassifications + new entries from 10b flagged with **(10b)**.
+
+### Reclassified from previous handovers
+
+- **(reclassified at NORMAL severity, was HIGH on Step 9b) Phase 2.5 wishlist — `occupancyType` cross-section feature:** when `financing.occupancyType === 'renting'`, show rent line in break-even fixed costs; when `'purchasing'`, show mortgage repayment line instead. **Never built in mojo_business** — this is forward feature work, not a port-fidelity bug. Was misclassified as the HIGH carry-forward; the ACTUAL HIGH carry-forward (cross-section sync of property fields) is resolved by `crossSectionSync.ts`.
+
+### From Step 10b
+
+- **(10b) Phase 2.5 / future-cleanup (LOW):** Opt into React Router v7 future flags (`v7_startTransition`, `v7_relativeSplatPath`). Cosmetic dev-console warnings only; not blocking. Adopt before the eventual v7 upgrade.
 
 ### From Step 10a
 
-- **(10a) Phase 2.5 / future-cleanup (low):** Triple-nested EXISTS in `project_content_uploads`'s "Business members can view uploads of linked assessments" policy. Functionally correct, but performance opt: rewrite as a JOIN-style or a `business_id`-on-uploads denormalisation when the Phase 2.5 archive UI starts hitting it. Logged by strategic-advisor during 12-check review.
-- **(10a) Phase 2.5:** Both new indexes (`idx_business_scenarios_business_id`, `idx_business_scenarios_business_active`) currently appear in `unused_index` advisor. Resolves when Phase 2.5 archive UI ships and queries hit them.
+- Phase 2.5 / future-cleanup (LOW): Triple-nested EXISTS in `project_content_uploads`'s "Business members can view uploads of linked assessments" policy. Functionally correct; rewrite as a JOIN-style or a denormalised `business_id` on uploads when the Phase 2.5 archive UI starts hitting it.
+- Phase 2.5: Both new indexes (`idx_business_scenarios_business_id`, `idx_business_scenarios_business_active`) currently appear in `unused_index` advisor. Resolves when Phase 2.5 archive UI ships.
 
-### From Step 9b
+### From Step 9b (still outstanding)
 
-- **Step 10b / HIGH (anatomy §6.1):** Cross-section sync between `fitoutFinancing` ↔ `detailedBreakEven` is missing in the viability repo. Step 9 route wrappers call `patchProjectData(updates)` directly without running the sync. Real product bug — fix lands with `useUpdateProjectData` + `useUpdateProjectPeriod` + the scaling-logic port in Step 10b.
-- **Step 10b (mutation hook batch):** `useUpdateProjectData` + `useUpdateProjectPeriod` deferred from 9b. Tied to the cross-section sync work.
-- **Step 10b / Phase 2.5:** Period selector currently renders as static text. Becomes interactive once `useUpdateProjectPeriod` lands.
 - **Phase 2.5:** Inline rename dialog (~30 LOC placeholder, name + town only). Anatomy §1.4 calls for full `<EditProjectSettingsDialog>` (name + locality + business type + Single/Multi mode toggle).
 - **Phase 2.5:** Inline export dialog is PDF+Excel only. Anatomy §1.4 calls for 3-button full export + simple-export variants for guests + Save-before-export gate + Business-name-for-export gate.
-- **Phase 2.5:** "New project" creation flow is a stub (toasts "lands in Step 10"). Wire to `useCreateProject` mutation + redirect.
-- **Future-cleanup (low):** `@/lib/export` index re-exports invisible to TS bundler module resolution. Deep imports used as workaround in `ProjectLayout.tsx`.
+- **Phase 2.5:** "New project" creation flow is a stub. Wire to `useCreateProject` mutation + redirect.
+- **Future-cleanup (LOW):** `@/lib/export` index re-exports invisible to TS bundler module resolution. Deep imports used as workaround.
 
 ### From Step 9 (still outstanding)
 
-- Phase 2.5 (anatomy §6.4): `StartPage`'s "Try as guest" routes to `/projects` (auth-gated). Guest-mode plumbing deferred to Phase 2.5.
+- Phase 2.5 (anatomy §6.4): `StartPage`'s "Try as guest" routes to `/projects` (auth-gated). Guest-mode plumbing deferred.
 - Phase 2.5 (anatomy §6.3): `InviteAcceptancePage` is a placeholder. Token acceptance logic is genuine TODO.
 - Future-cleanup: `ProjectsListPage` uses `useEffect` + manual fetch instead of `useQuery`.
 - Documented pattern: `InviteAcceptancePage`'s auth gate is internal (asymmetric vs other protected routes). Intentional per anatomy.
 
+## Audit-pattern improvements (Step 10b learnings)
+
+**Bake into future dispatches:**
+
+> **When a "mutation" is purely a transform on already-loaded ProjectData, prefer local state + autosave over a dedicated React Query mutation hook.** Dedicated mutation hooks introduce a cache-vs-local-state staleness race when local state can be ahead of cache (e.g. autosave debouncing). Local-state-then-autosave avoids the race entirely. Caught in Step 10b's smoke; would have shipped silently broken otherwise.
+
+This complements the Step 9b learning ("verify mutation hooks exist BEFORE chrome composition assumes them") — together they form the rule: **mutation hooks are for true server-state mutations, not for client-state transformations of already-loaded data.**
+
+**Other learning carried forward:**
+- Section 8 smoke is the falsifiable test of intent — it catches what types and unit tests can't (cache-staleness races, latent legacy gaps in customFixedCosts scaling).
+- The "compare against legacy" check (dispatch §8b) is high-leverage — it surfaces port-fidelity gaps in the source repo that propagated forward.
+
 ## Blockers
 
-None blocking Step 10b (now unblocked — schema is ready for the deferred mutation hooks + cross-section sync).
+None blocking Step 11.
 
 **Carried over (still outstanding for Max outside the session):**
 - Rotate the password for `admin@maxsenterprises.com.au` in Supabase. Plaintext leaked in Step 1 chat; treat as compromised.
 
 ## Next Session
 
-**Step 10b — code mutations + cross-section sync.** Now that the schema is ready, this step is independent of further DB work. Per the Step-9b adjudication:
+**Step 11 — Browser smoke (live).** Per [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) §3 Step 11. Full end-to-end verification on the deployed Vercel preview URL (or temporary mojobusiness.ai cutover, depending on DNS plan).
 
-1. **Port the cross-section scaling logic** from anatomy §3.2 (L681–716) into `lib/scaleProjectByPeriod.ts` — pure transform.
-2. **Author `useUpdateProjectData`** mutation hook. The handler runs the bidirectional sync for `fitoutFinancing` ↔ `detailedBreakEven` (anatomy §6.1) before writing — the sync logic moves *into* the mutation, not into pages, so route changes can't lose it.
-3. **Author `useUpdateProjectPeriod`** mutation hook. Wraps the scaling logic. Wires to a real interactive period selector in `ProjectLayout`'s sub-header (replacing the current static text).
-4. **Test bidirectional sync explicitly** to confirm no infinite-loop after the refactor.
+Pre-conditions met:
+- ✓ Step 10 migrations applied to live Supabase
+- ✓ Vercel preview URL reachable
+- ✓ Test user account exists in `auth.users`
 
-After Step 10b:
-- **Step 11 — Browser smoke** (per plan §3 Step 11): full end-to-end UX verification.
-- **Step 12 — Mojo 360 cleanup** (per plan §3 Step 12): in the *other* repo.
+This is verification only — no commit unless issues surface. If issues surface: fix and commit; loop until clean.
+
+After Step 11:
+- **Step 12 — Mojo 360 cleanup** (per plan §3 Step 12): in the *other* repo (`mojo_business`). Remove the V-ONLY surfaces. After this lands, viability lives entirely in this repo.
 
 ## Key References
 
@@ -153,23 +144,26 @@ After Step 10b:
 - TooltipProvider hotfix: `b229c74`
 - Step 9b commit: `13bb476`
 - Step 9b handover: `d6eb33c`
-- **Step 10a commit: `e11ef56` — first production-DDL commit; Vercel redeploy irrelevant (no app code changes)**
+- Step 10a commit: `e11ef56`
+- Step 10a handover: `2f63b42`
+- **Step 10b commit: `3024833`** — cross-section sync + period scaling shipped
 - Branch: `main`
 
-**Step 10a metrics:**
-- Migration: `20260509232058_viability_baseline_step10a` (UTC timestamp)
-- Backup reference: Max took logical backup of business_scenarios + collaborators + project_invites + project_content_uploads via Supabase dashboard prior to apply
-- New files: 2 (`supabase/migrations/00000000000000_baseline.sql`, `supabase/migrations/20260509232058_viability_baseline_step10a.sql`)
-- Schema changes: 2 DROP (1 policy + 2 functions), 2 ADD COLUMN (+ 2 indexes), 4 CREATE POLICY
-- Sub-agent fan-outs: 1 dispatched + 1 self-served
-- Cascade theory: not exercised in 10a (DDL-only step)
-- New audit-pattern category baked in: pre-apply drift check on production state (a verification that the dispatch-time understanding of the DB still holds at apply-time)
+**Step 10b metrics:**
+- New files: 3 (`crossSectionSync.ts`, `scaleProjectByPeriod.ts`, `useUpdateProjectData.ts`)
+- Deleted files: 1 (`useUpdateProjectPeriod.ts` — authored then removed during smoke)
+- Modified files: 1 (`ProjectLayout.tsx` — chrome wiring + interactive period selector)
+- Module count: 2,555 → 2,557 (+2 net; +3 from new files, −1 from deleted hook)
+- Sub-agent fan-outs: 2 (sync logic mapping, destination wiring)
+- Cascade theory: not exercised in 10b
+- Smoke iterations: 2 (initial + customFixedCosts fix; re-smoke caught cache-staleness race → simpler architecture)
+- New audit-pattern category: "transforms on loaded data should use local-state + autosave, not React Query mutations"
 
-**Cumulative inventory misses (still 8 — Step 10a added zero):**
+**Cumulative inventory misses (still 8 — Step 10b added zero):**
 
 | # | File | Step surfaced | LOC |
 |---:|---|---|---:|
-| 1 | `src/lib/hoursVisualization/` (4-file directory) | 2 | ~600 |
+| 1 | `src/lib/hoursVisualization/` | 2 | ~600 |
 | 2 | `src/lib/contentUploads.ts` | 2 | 6.4KB |
 | 3 | `src/lib/walkthrough.ts` | 4 | 354 |
 | 4 | `src/lib/menuUtils.ts` | 4 | 486 |
@@ -178,45 +172,51 @@ After Step 10b:
 | 7 | `src/lib/calculations.ts` | 4 (second-pass) | 24 |
 | 8 | `src/hooks/useAutoSave.ts` (consolidated to `src/features/project/hooks/useProjectAutoSave.ts` in Step 8) | 5 | 121 |
 
-**Cumulative standard mechanical rewrites (still 7, still active — none exercised in 10a since DDL-only).**
+**Cumulative standard mechanical rewrites (still 7, still active — none exercised in 10b since this was new authoring, not porting).**
 
 **Architectural strip log (deliberate adaptations away from Mojo 360 concepts):**
 - Step 1: `<AuthProvider>` stripped of `is_super_user`, `is_advisor`, `signInWithProvider`, `OrgProvider`
 - Step 6: `HospoOSModal` stripped of `useBusinessContext` dependency
-- Step 9b: `ProjectLayout`'s `onReturnToHub` is a no-op (kept for `ProjectSideNav` prop compatibility)
-- **Step 10a: dead `Super users can read all business scenarios` SELECT policy DROPPED** at the DB layer; `is_project_owner_check` overloads DROPPED.
+- Step 9b: `ProjectLayout`'s `onReturnToHub` is a no-op
+- Step 10a: dead super_admin policy + `is_project_owner_check` overloads dropped at DB layer
+- (No new strips in 10b.)
 
 **Cleanup tracker:**
 - ✓ Step 7: 2 `@ts-expect-error` directives in AIBusinessPlanPage.tsx — REMOVED.
-- (No new cleanup tracker entries from Step 10a.)
+- (No new cleanup tracker entries from 10b.)
 
-**Step 10a architectural decisions:**
-- Baseline file (`00000000000000_baseline.sql`) is documentary stub, not extracted DDL. Schema already exists in production via mojo_business migrations; the stub serves as the migration-history anchor.
-- Phase 2.5 archive index changed from dispatch's draft `(user_id) WHERE archived_at IS NULL` to spec's `(business_id, updated_at DESC) WHERE archived_at IS NULL` — matches the actual primary query pattern (per Phase 2.5 spec §6.2).
-- 4 archive RLS policies authored from spec §7.2–§7.4 verbatim (not stubbed).
-- Soft-delete (`soft_deleted_at` column) intentionally **not** included in 10a — Phase 2.5 spec §6.3 leaves the decision open and recommends Option C (skip soft-delete entirely). Defer to Phase 2.5.
+**Step 10b architectural decisions:**
+- Cross-section sync lives inside `patchProjectData` (centralised) so local state is always sync-coherent. Autosave reads coherent state and persists it — no autosave changes needed.
+- Period scaling is a synchronous local-state transform, NOT a React Query mutation. Avoids the cache-vs-local-state race that would otherwise discard user's pending edits.
+- `useUpdateProjectData` retained as a generic mutation hook — useful for explicit "persist now" calls that bypass autosave debounce. Currently no consumer; logged as available infrastructure for future steps.
+- `customFixedCosts.value` scaling closed — legacy mojo_business gap that would have shipped to viability.
 
 **Source clones in /tmp:**
-- `/tmp/mojo-business-current/` — current main, used Steps 2–3, 7, 8.
-- `/tmp/mojo-pre-phase-c/` — `pre-phase-c-deletion` tag at commit `2fc45f7`, used Steps 4–6.
+- `/tmp/mojo-business-current/` — `src/App.tsx` deleted in Phase C-light; remaining tree usable for component reads.
+- `/tmp/mojo-pre-phase-c/` — full pre-deletion clone, used for `App.tsx` references throughout extraction.
 
 **Auth surface (unchanged):**
 - `<AuthProvider>` exposes only `{ user, isLoading, signIn, signUp, signOut }`
 - Supabase client localStorage namespace: `mojo-viability-auth`
 
-**Hooks at `src/features/project/hooks/` (still 6 — none added in 10a):**
+**Hooks at `src/features/project/hooks/` (now 7 — net +1 from 9b's 6):**
 - `useProject.ts` (query)
 - `useProjectAutoSave.ts` (autosave)
 - `useKeyboardShortcuts.ts`
 - `useProjectPermissions.ts` (Step 9b)
 - `useRenameProject.ts` (Step 9b)
 - `useSaveProject.ts` (Step 9b)
+- **`useUpdateProjectData.ts` (Step 10b)** — generic update mutation, runs cross-section sync. No consumer yet; available for explicit-persist use cases.
+
+**Pure functions added in 10b:**
+- `applyCrossSectionSync(prev, updates)` in `src/lib/calculations/crossSectionSync.ts`
+- `scaleProjectByPeriod(prev, newPeriod)` in `src/lib/scaleProjectByPeriod.ts`
 
 **Planning docs (read in order at session start):**
 - [`context/viability-extraction/extraction-plan-2026-05-09.md`](../context/viability-extraction/extraction-plan-2026-05-09.md) — reconciliation plan, read first
-- [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) — the 12-step plan (**Step 10b = next**)
+- [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) — the 12-step plan (**Step 11 = next; verification-only**)
 - [`context/viability-extraction/Q1-Q7-Decisions.md`](../context/viability-extraction/Q1-Q7-Decisions.md) — locked architectural decisions
 - [`context/viability-extraction/inventory.md`](../context/viability-extraction/inventory.md) — V-ONLY inventory
-- [`context/viability-extraction/app-tsx-anatomy.md`](../context/viability-extraction/app-tsx-anatomy.md) — App.tsx → Router map (**§3.2 + §6.1 critical for Step 10b**)
-- [`context/viability-extraction/pre-extraction-punch-list.md`](../context/viability-extraction/pre-extraction-punch-list.md) — orphan corrections
-- [`context/viability-extraction/phase-2.5-hub-viability-spec.md`](../context/viability-extraction/phase-2.5-hub-viability-spec.md) — informational, post-Phase-2 (referenced by Step 10a for archive schema bundle)
+- [`context/viability-extraction/app-tsx-anatomy.md`](../context/viability-extraction/app-tsx-anatomy.md) — App.tsx → Router map
+- [`context/viability-extraction/pre-extraction-punch-list.md`](../context/viability-extraction/pre-extraction-punch-list.md)
+- [`context/viability-extraction/phase-2.5-hub-viability-spec.md`](../context/viability-extraction/phase-2.5-hub-viability-spec.md)
