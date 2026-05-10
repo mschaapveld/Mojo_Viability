@@ -19,6 +19,8 @@ import { useProjectAutoSave } from '@/features/project/hooks/useProjectAutoSave'
 import { useProjectPermissions } from '@/features/project/hooks/useProjectPermissions';
 import { useRenameProject } from '@/features/project/hooks/useRenameProject';
 import { useSaveProject } from '@/features/project/hooks/useSaveProject';
+import { applyCrossSectionSync } from '@/lib/calculations/crossSectionSync';
+import { scaleProjectByPeriod } from '@/lib/scaleProjectByPeriod';
 import ProjectSideNav from '@/features/project/components/ProjectSideNav';
 import { BusinessSnapshot } from '@/features/project/components/BusinessSnapshot';
 import { SaveStatusIndicator } from '@/features/project/components/SaveStatusIndicator';
@@ -29,7 +31,14 @@ import { ShareProjectDialog } from '@/features/project/components/ShareProjectDi
 import { buildExportData } from '@/lib/export/exportDataBuilder';
 import { exportComprehensivePDF } from '@/lib/export/exportToPDF';
 import { exportComprehensiveExcel } from '@/lib/export/exportToExcel';
-import type { BusinessOrigin, ProjectData } from '@/lib/types/projectTypes';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import type { BusinessOrigin, Period, ProjectData } from '@/lib/types/projectTypes';
 
 const PROJECT_TAB_ROUTES: Record<string, string> = {
   simple: 'break-even',
@@ -89,7 +98,7 @@ export function ProjectLayout() {
   }, [query.data]);
 
   const patchProjectData = useCallback((patch: Partial<ProjectData>) => {
-    setProjectData((prev) => (prev ? { ...prev, ...patch } : prev));
+    setProjectData((prev) => (prev ? applyCrossSectionSync(prev, patch) : prev));
   }, []);
 
   const navigateTab = useCallback(
@@ -197,6 +206,12 @@ export function ProjectLayout() {
     }
   };
 
+  const handlePeriodChange = (newPeriod: Period) => {
+    if (newPeriod === project.period) return;
+    setProjectData((prev) => (prev ? scaleProjectByPeriod(prev, newPeriod) : prev));
+    toast.success(`Period changed to ${newPeriod}`);
+  };
+
   const handleNewProjectConfirm = (_origin: BusinessOrigin) => {
     setShowNewProjectOriginDialog(false);
     // Step 10: wire to useCreateProject(origin) mutation; navigate to /project/:newId/break-even.
@@ -292,9 +307,19 @@ export function ProjectLayout() {
               </div>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
-              {/* Step 10: replace with interactive period selector backed by useUpdateProjectPeriod;
-                  wire to cross-section scaling logic per anatomy §3.2 / §6.1. */}
-              <span className="text-sm text-muted-foreground">Period: {project.period}</span>
+              <Select
+                value={project.period}
+                onValueChange={(value) => handlePeriodChange(value as Period)}
+              >
+                <SelectTrigger className="w-32" aria-label="Period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Weekly">Weekly</SelectItem>
+                  <SelectItem value="Monthly">Monthly</SelectItem>
+                  <SelectItem value="Yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
               <SaveStatusIndicator
                 status={autoSave.saveStatus}
                 error={autoSave.error}
