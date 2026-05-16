@@ -1,222 +1,149 @@
-# Mojo Viability Handover — 2026-05-10 (Step 10b)
+# Mojo Viability Handover — 2026-05-16 (Step 11b-A)
 
 ## Session Summary
 
-Step 10b — code mutations + cross-section sync. Built the cross-section sync function and period scaling pure functions, wired them through `patchProjectData` (sync) and a synchronous local-state setter (period). Smoke caught two bugs: customFixedCosts entries silently failed to scale (legacy gap, fixed inline), and the original `useUpdateProjectPeriod` mutation hook introduced a cache-vs-local-state race (autosave debounce of 1200ms means cache can be older than local state when user changes period mid-typing). Strategic-advisor adjudicated: remove the period mutation hook entirely, use a synchronous setter that scales local state and lets autosave persist normally. Final shape ships with `useUpdateProjectData` (still useful for explicit syncs) but not `useUpdateProjectPeriod`. The HIGH-severity Step-9b carry-forward (cross-section sync) is **resolved by the sync function**; the related "rent ↔ mortgage swap" feature is reclassified as Phase 2.5 wishlist (never built in mojo_business — it's forward feature work, not a port-fidelity bug).
+Step 11 smoke (planned for this session) surfaced public-surface defects that snowballed into a strategic rebuild dispatched as four sub-dispatches (A–D). **Dispatch A — design tokens, shared chrome, and the two surviving 11a tactical items — shipped.** Foundation in place: CSS-var tokens, Tailwind namespace, fonts, M-glyph assets, seven shared chrome components, a temporary `/_design-preview` route, the `vercel.json` SPA fallback, and the StartPage guest-card hide. The existing public pages (`/`, `/how-it-works`, `/reach-out`) are untouched and render exactly as before — Dispatch B will swap LandingPage to use the new chrome.
 
 ## Completed
 
-**Cross-section sync — pure function**
-- [src/lib/calculations/crossSectionSync.ts](src/lib/calculations/crossSectionSync.ts) — `applyCrossSectionSync(prev, updates)` returns the merged + synced ProjectData. Two internal helpers mirror property fields when `occupancyType` differs between scenario pairs:
-  - `syncFitoutToDetailed`: copies 8 property fields from financing scenarios into matching detailed scenarios (only when occupancyType differs); also resolves `loanType` (defaults to `'principalAndInterest'` when transitioning to purchasing).
-  - `syncDetailedToFitout`: mirror, but `loanType` is NOT synced back (asymmetric — fitout-side concern).
-- Field set covered (per Section 2 fan-out): `occupancyType`, `propertyPurchasePrice`, `propertyDeposit`, `propertyClosingCosts`, `propertyStampDuty`, `propertyGstPayable`, `propertyInterestRate`, `propertyLoanTerm`. `loanType` covered fitout→detailed only.
-- Loop-safe by design: the `if occupancyType differs` guard means the sync only runs on mode flips (renting↔purchasing), not on every property-field edit. After mode flip, occupancyTypes match → no further sync triggers.
+**Planning docs commit** (`e9275b5` — separated from implementation per dispatch §2):
+- `context/dispatches/` — strategic-rebuild index + A/B/C/D dispatches + 11a tactical-patch + planner-training prompt
+- `context/design_handoff_landing_and_reach_out/` — README + prototype reference files + M-glyph SVGs
 
-**Period scaling — pure function**
-- [src/lib/scaleProjectByPeriod.ts](src/lib/scaleProjectByPeriod.ts) — `scaleProjectByPeriod(prev, newPeriod)` returns ProjectData with numeric fields in `simpleBreakEven` + `detailedBreakEven` (all 3 scenarios) scaled by `multipliers[newPeriod] / multipliers[oldPeriod]` (Weekly=1, Monthly=4.33, Yearly=52).
-- Substring exclusion list preserved verbatim from legacy: `'variable'`, `'percent'`, `'Percent'`, `'Interest'`, `'Term'`.
-- **`customFixedCosts[].value` now scales** — closes a latent gap in the legacy mojo_business `scaleData` which only iterated top-level numeric properties and silently skipped array-of-objects entries.
-
-**Mutation hook**
-- [src/features/project/hooks/useUpdateProjectData.ts](src/features/project/hooks/useUpdateProjectData.ts) — TanStack mutation. Reads cached project from `['project', id]`, runs `applyCrossSectionSync`, persists, invalidates cache.
-- **`useUpdateProjectPeriod.ts` was authored then deleted** during smoke — see strategic-advisor diagnosis below.
-
-**ProjectLayout wiring**
-- [src/features/project/components/ProjectLayout.tsx](src/features/project/components/ProjectLayout.tsx):
-  - `patchProjectData` now runs `applyCrossSectionSync(prev, patch)` instead of plain spread merge — local state is always sync-coherent; autosave persists the synced shape (no autosave changes needed).
-  - Period sub-header replaced from static `<span>Period: {project.period}</span>` to interactive shadcn `<Select>` with Weekly/Monthly/Yearly options.
-  - `handlePeriodChange` is a synchronous local-state setter: `setProjectData((prev) => prev ? scaleProjectByPeriod(prev, newPeriod) : prev)`. Autosave persists naturally on next debounce tick.
-
-**Smoke + adjudications during Section 8**
-
-Smoke pass 1 — Max ran locally and reported: cross-section sync ✓, autosave ✓, but **fixed-cost fields in `/break-even/detailed` don't scale** when period changes.
-- Investigation: standard fixed costs (rent, insurance, accounting, marketing, utilities, otherFixed, labourMinimumCost) DO scale via the substring-exclusion logic. The gap was specifically `customFixedCosts` (an array of `{id, name, value}` objects — the scaler's top-level iteration didn't reach the `value` property). Same gap existed in legacy mojo_business. Fix applied: explicit `scaleCustomFixedCosts` helper called from a per-scenario wrapper inside the scaler.
-
-Smoke pass 2 — Max re-smoked with strategic-advisor adjudication: discovered a more fundamental bug in the period mutation. **Cache-vs-local-state race:**
-- The original `useUpdateProjectPeriod` hook read cached project data via `queryClient.getQueryData(['project', id])`.
-- Cache lags local state when autosave is mid-debounce (1200ms). User types in a field, then immediately changes period — cache still holds the pre-typing data.
-- Mutation scaled the stale cache, persisted scaled-stale, refetched scaled-stale, useEffect overwrote local state with scaled-stale → **user's typed values vanished**.
-- **Fix:** delete `useUpdateProjectPeriod` entirely. Period change is a pure transform on already-loaded ProjectData — synchronous local-state setter + normal autosave persistence avoids the race.
+**Implementation commit** (`10e8481`):
+- [vercel.json](vercel.json) — SPA fallback rewrites; `/privacy` and `/terms` now resolve on direct navigation (replaces the 11a tactical-patch item)
+- [src/index.css](src/index.css) — Viability brand tokens (`--vbr-*`, `--m360-*`) added alongside the existing shadcn HSL system. `::selection` rule (green bg, ink fg).
+- [tailwind.config.js](tailwind.config.js) — `viability` + `m360` colour namespaces, `display` (Fraunces) / `display-alt` (Syne) / `mono` font families, `pill` / `tight` / `chip` radii, `viability-ticker` + `viability-fade-up` keyframes + animations (desktop 38s, mobile 28s). The existing `sans` already pointed to DM Sans — extending it was a no-op (no visual regression on existing pages).
+- [index.html](index.html) — Google Fonts `<link>` preconnect + stylesheet for Fraunces / Syne / DM Sans.
+- [public/icons/](public/icons/) — `m-viability.svg` and `m-mojo360.svg` (reference copies; MGlyph inlines the path).
+- Seven new components in [src/components/viability/](src/components/viability/):
+  - **MGlyph** — recolourable inline SVG, props for `size`, `color`, `ink`.
+  - **Eyebrow** — overline label, `tone='green'|'amber'`, optional leading dot.
+  - **VButton** — standalone `<button>` (NOT shadcn `<Button>` — see deviation below) with `solid`/`ghost` variants and `sm`/`md`/`lg` sizes.
+  - **HairlineLabel** — vertical hairline + mono caption.
+  - **ViabilityTicker** — full-width green marquee with `motion-safe:` gate; mobile (28s) and desktop (38s) tempo via responsive variant.
+  - **ViabilityHeader** — sticky, blur-on-scroll, auth-aware right CTA (unauthed: "Sign in" + "Try free →"; authed: "Open Viability →"). Active nav underline.
+  - **ViabilityFooter** — 4-column lockup (1.4fr 1fr 1fr 1fr) + orange Mojo 360 cross-link card + bottom strip with copyright + "Built in Port Macquarie · NSW."
+- [src/pages/_DesignPreview.tsx](src/pages/_DesignPreview.tsx) — internal-only sanity-check page mounted at `/_design-preview` (no auth gate). To be removed in Dispatch B.
+- [src/App.tsx](src/App.tsx) — `/_design-preview` route registered. StartPageRoute updated to pass `onSignIn` and drop `onGuest`.
+- [src/pages/StartPage.tsx](src/pages/StartPage.tsx) — guest card removed, grid collapsed to single column, "Already have an account? Sign in" link added below the create-account card (replaces the 11a tactical-patch item).
 
 **Verification**
 - `npm run typecheck`: GREEN
-- `npm run build`: GREEN (2,558 → 2,557 modules — net +2 from the +3 new files minus 1 deleted hook)
-- Browser smoke: confirmed by Max — cross-section sync works, period scaling works including custom fixed costs, autosave persists, console clean.
+- `npm run build`: GREEN (2,557 → 2,565 modules — +8 from new components + design preview; CSS 59.41 KB → 65.60 KB from new tokens/keyframes)
+- Local Playwright smoke on `/_design-preview`: 0 console errors; only the two known React Router future-flag warnings (already on Phase 2.5 list). Screenshot confirmed: header chrome correct, MGlyph renders green + orange, VButton sm/md/lg/ghost variants all rendered as pills, marquee scrolls, footer 4-column lockup with orange Mojo 360 card visible.
+- `/` (legacy LandingPage): renders unchanged — no regression.
+- `/start`: shows only the create-account card + "Already have an account? Sign in" link + Back. Guest card gone.
 
-**Sub-agent fan-out execution log — 2 dispatches this step**
-- **Fan-out #1 (sync logic in mojo_business):** mapped `handleFitoutFinancingUpdate` (L772–800), `handleDetailedBreakEvenUpdate` (L802–829), `handlePeriodChange` (L686–721) from `/tmp/mojo-pre-phase-c/src/App.tsx`. Returned exact field sets, loop-prevention via occupancyType-differs guard, asymmetric loanType sync. No 360-platform concept usage.
-- **Fan-out #2 (viability destination wiring):** recommended sync inside `patchProjectData` (centralised — local state always synced; autosave dumb). Recommendation accepted.
-
-**Commits + push**
-- Step 10b code commit: `3024833 feat: cross-section sync + period scaling + mutation hooks (Step 10b)` — 4 files, 228 insertions, 5 deletions.
-- Handover commit: pending push (this commit).
+**Architectural deviation (documented in commit message)**
+- **VButton built as standalone `<button>` rather than composing shadcn `<Button>`** (stop-condition 2 triggered). The shadcn cva had baked-in heights (`h-9`, `h-8`, `h-10`) and `rounded-md` that fought the pill radii + custom paddings. A standalone button is cleaner than overriding via className specificity wars. `asChild` support kept via `@radix-ui/react-slot` so the API stays consumer-compatible.
 
 ## In Progress
 
-None — Step 10b complete. The HIGH-severity Step-9b carry-forward is resolved.
-
-## Phase 2.5 / future-cleanup follow-ups
-
-6 items total (severity-tagged). Reclassifications + new entries from 10b flagged with **(10b)**.
-
-### Reclassified from previous handovers
-
-- **(reclassified at NORMAL severity, was HIGH on Step 9b) Phase 2.5 wishlist — `occupancyType` cross-section feature:** when `financing.occupancyType === 'renting'`, show rent line in break-even fixed costs; when `'purchasing'`, show mortgage repayment line instead. **Never built in mojo_business** — this is forward feature work, not a port-fidelity bug. Was misclassified as the HIGH carry-forward; the ACTUAL HIGH carry-forward (cross-section sync of property fields) is resolved by `crossSectionSync.ts`.
-
-### From Step 10b
-
-- **(10b) Phase 2.5 / future-cleanup (LOW):** Opt into React Router v7 future flags (`v7_startTransition`, `v7_relativeSplatPath`). Cosmetic dev-console warnings only; not blocking. Adopt before the eventual v7 upgrade.
-
-### From Step 10a
-
-- Phase 2.5 / future-cleanup (LOW): Triple-nested EXISTS in `project_content_uploads`'s "Business members can view uploads of linked assessments" policy. Functionally correct; rewrite as a JOIN-style or a denormalised `business_id` on uploads when the Phase 2.5 archive UI starts hitting it.
-- Phase 2.5: Both new indexes (`idx_business_scenarios_business_id`, `idx_business_scenarios_business_active`) currently appear in `unused_index` advisor. Resolves when Phase 2.5 archive UI ships.
-
-### From Step 9b (still outstanding)
-
-- **Phase 2.5:** Inline rename dialog (~30 LOC placeholder, name + town only). Anatomy §1.4 calls for full `<EditProjectSettingsDialog>` (name + locality + business type + Single/Multi mode toggle).
-- **Phase 2.5:** Inline export dialog is PDF+Excel only. Anatomy §1.4 calls for 3-button full export + simple-export variants for guests + Save-before-export gate + Business-name-for-export gate.
-- **Phase 2.5:** "New project" creation flow is a stub. Wire to `useCreateProject` mutation + redirect.
-- **Future-cleanup (LOW):** `@/lib/export` index re-exports invisible to TS bundler module resolution. Deep imports used as workaround.
-
-### From Step 9 (still outstanding)
-
-- Phase 2.5 (anatomy §6.4): `StartPage`'s "Try as guest" routes to `/projects` (auth-gated). Guest-mode plumbing deferred.
-- Phase 2.5 (anatomy §6.3): `InviteAcceptancePage` is a placeholder. Token acceptance logic is genuine TODO.
-- Future-cleanup: `ProjectsListPage` uses `useEffect` + manual fetch instead of `useQuery`.
-- Documented pattern: `InviteAcceptancePage`'s auth gate is internal (asymmetric vs other protected routes). Intentional per anatomy.
-
-## Audit-pattern improvements (Step 10b learnings)
-
-**Bake into future dispatches:**
-
-> **When a "mutation" is purely a transform on already-loaded ProjectData, prefer local state + autosave over a dedicated React Query mutation hook.** Dedicated mutation hooks introduce a cache-vs-local-state staleness race when local state can be ahead of cache (e.g. autosave debouncing). Local-state-then-autosave avoids the race entirely. Caught in Step 10b's smoke; would have shipped silently broken otherwise.
-
-This complements the Step 9b learning ("verify mutation hooks exist BEFORE chrome composition assumes them") — together they form the rule: **mutation hooks are for true server-state mutations, not for client-state transformations of already-loaded data.**
-
-**Other learning carried forward:**
-- Section 8 smoke is the falsifiable test of intent — it catches what types and unit tests can't (cache-staleness races, latent legacy gaps in customFixedCosts scaling).
-- The "compare against legacy" check (dispatch §8b) is high-leverage — it surfaces port-fidelity gaps in the source repo that propagated forward.
+None — Dispatch A is a closed unit.
 
 ## Blockers
 
-None blocking Step 11.
+None blocking Dispatch B.
 
 **Carried over (still outstanding for Max outside the session):**
 - Rotate the password for `admin@maxsenterprises.com.au` in Supabase. Plaintext leaked in Step 1 chat; treat as compromised.
 
+## Phase 2.5 / future-cleanup follow-ups
+
+### Reclassified this session
+- **"StartPage's 'Try as guest' deferred"** — moved off the carry-forward list. Now intentionally hidden, not broken. Build out as part of Phase 2.5 guest-mode plumbing.
+
+### New from Step 11b-A
+- **(11b-A) Phase 2.5 — confirm ABN with Max.** Footer copyright currently shows `ABN ###` as a placeholder with a `// TODO` comment. Replace before public launch.
+- **(11b-A) Phase 2.5 — Mojo 360 footer card uses bg gradient + inline style** (Tailwind doesn't support `background-image: linear-gradient(...)` over a solid in arbitrary-value form cleanly). Acceptable; could move to a custom utility if it spreads beyond one site.
+
+### From prior steps (still outstanding)
+- **(10b reclassified at NORMAL)** Phase 2.5 wishlist — `occupancyType` cross-section feature (rent ↔ mortgage swap). Forward feature work, not a port-fidelity bug.
+- **(10b LOW)** Opt into React Router v7 future flags (`v7_startTransition`, `v7_relativeSplatPath`). Cosmetic dev-console warnings.
+- **(10a LOW)** Triple-nested EXISTS in `project_content_uploads`'s "Business members can view uploads of linked assessments" policy.
+- **(10a)** Both new indexes (`idx_business_scenarios_business_id`, `idx_business_scenarios_business_active`) currently appear in `unused_index` advisor.
+- **Phase 2.5 (Step 9b):** Inline rename dialog placeholder (~30 LOC); full `<EditProjectSettingsDialog>` per anatomy §1.4.
+- **Phase 2.5 (Step 9b):** Inline export dialog is PDF+Excel only; full 3-button export per anatomy §1.4.
+- **Phase 2.5 (Step 9b):** "New project" creation flow is a stub.
+- **Future-cleanup (LOW, Step 9b):** `@/lib/export` index re-exports invisible to TS bundler module resolution.
+- **Phase 2.5 (Step 9):** `StartPage`'s "Try as guest" — see reclassification above.
+- **Phase 2.5 (Step 9):** `InviteAcceptancePage` is a placeholder.
+- **Future-cleanup (Step 9):** `ProjectsListPage` uses `useEffect` + manual fetch instead of `useQuery`.
+
 ## Next Session
 
-**Step 11 — Browser smoke (live).** Per [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) §3 Step 11. Full end-to-end verification on the deployed Vercel preview URL (or temporary mojobusiness.ai cutover, depending on DNS plan).
+**Smoke Dispatch A on Vercel preview.** Max runs the §6 smoke script (S1–S16) on the deployed preview URL — focuses on:
+- S1, S2: Direct navigation to `/privacy` and `/terms` (validates `vercel.json` rewrites). **Cannot be validated locally with `vite preview` alone** — this is the production-only validation step.
+- S3–S10: `/_design-preview` chrome behaviours.
+- S11: Reduce Motion freezes the ticker.
+- S12, S13: `/start` shows only create-account + Sign in link.
+- S14: `/` legacy LandingPage still renders.
+- S15, S16: Network shows Fraunces/Syne/DM Sans woff2 loads; console clean.
 
-Pre-conditions met:
-- ✓ Step 10 migrations applied to live Supabase
-- ✓ Vercel preview URL reachable
-- ✓ Test user account exists in `auth.users`
+**If smoke is green → request Dispatch B from the Planner.** Dispatch B will:
+- Replace the `/` `LandingPage` with the new chrome
+- Build out the hero, the live dossier interactive widget, and the seven landing sections
+- Delete the unused `LandingHeader.tsx` once nothing imports it
+- Remove the temporary `/_design-preview` route
 
-This is verification only — no commit unless issues surface. If issues surface: fix and commit; loop until clean.
-
-After Step 11:
-- **Step 12 — Mojo 360 cleanup** (per plan §3 Step 12): in the *other* repo (`mojo_business`). Remove the V-ONLY surfaces. After this lands, viability lives entirely in this repo.
+**If smoke surfaces issues:** fix in place, re-commit, re-smoke. Don't proceed to Dispatch B until A is clean.
 
 ## Key References
 
-**Repo state:**
-- Bootstrap (Step 1): `2950ee6`
-- CLAUDE.md handover patch: `213389e`
-- Step 2 commit: `7c40fa9`
-- Step 2 handover: `c634ff7`
-- Step 3 commit: `ce4228a`
-- Step 3 handover: `5e41404`
-- Step 4 commit: `fdafc70`
-- Step 4 handover: `6c1cd4f`
-- Step 5 commit: `c9dbe5f`
-- Step 5 handover: `b873d65`
-- Step 6 commit: `6daaabc`
-- Step 6 handover: `aca502c`
-- Step 7 commit: `590ce47`
-- Step 7 handover: `a395809`
-- Step 8 commit: `5732982`
-- Step 8 handover: `c943b24`
-- Step 9 code commit: `d9b883f`
-- Step 9 handover: `42707c4`
-- TooltipProvider hotfix: `b229c74`
-- Step 9b commit: `13bb476`
-- Step 9b handover: `d6eb33c`
-- Step 10a commit: `e11ef56`
-- Step 10a handover: `2f63b42`
-- **Step 10b commit: `3024833`** — cross-section sync + period scaling shipped
-- Branch: `main`
+**Commits this session:**
+- Planning docs: `e9275b5 docs: Step 11b planning + design handoff materials`
+- **Implementation: `10e8481 feat: viability design tokens + shared chrome (Step 11b-A)`**
+- Branch: `main` (1 commit ahead of `origin/main` after docs commit; 2 ahead after implementation commit)
 
-**Step 10b metrics:**
-- New files: 3 (`crossSectionSync.ts`, `scaleProjectByPeriod.ts`, `useUpdateProjectData.ts`)
-- Deleted files: 1 (`useUpdateProjectPeriod.ts` — authored then removed during smoke)
-- Modified files: 1 (`ProjectLayout.tsx` — chrome wiring + interactive period selector)
-- Module count: 2,555 → 2,557 (+2 net; +3 from new files, −1 from deleted hook)
-- Sub-agent fan-outs: 2 (sync logic mapping, destination wiring)
-- Cascade theory: not exercised in 10b
-- Smoke iterations: 2 (initial + customFixedCosts fix; re-smoke caught cache-staleness race → simpler architecture)
-- New audit-pattern category: "transforms on loaded data should use local-state + autosave, not React Query mutations"
+**Files added/modified:**
 
-**Cumulative inventory misses (still 8 — Step 10b added zero):**
+New files (11):
+- `vercel.json`
+- `public/icons/m-viability.svg`, `public/icons/m-mojo360.svg`
+- `src/components/viability/MGlyph.tsx`
+- `src/components/viability/Eyebrow.tsx`
+- `src/components/viability/VButton.tsx`
+- `src/components/viability/HairlineLabel.tsx`
+- `src/components/viability/ViabilityTicker.tsx`
+- `src/components/viability/ViabilityHeader.tsx`
+- `src/components/viability/ViabilityFooter.tsx`
+- `src/pages/_DesignPreview.tsx`
 
-| # | File | Step surfaced | LOC |
-|---:|---|---|---:|
-| 1 | `src/lib/hoursVisualization/` | 2 | ~600 |
-| 2 | `src/lib/contentUploads.ts` | 2 | 6.4KB |
-| 3 | `src/lib/walkthrough.ts` | 4 | 354 |
-| 4 | `src/lib/menuUtils.ts` | 4 | 486 |
-| 5 | `src/lib/liquorLicences.ts` | 4 | 116 |
-| 6 | `src/lib/naturalLanguageParser.ts` | 4 | 432 |
-| 7 | `src/lib/calculations.ts` | 4 (second-pass) | 24 |
-| 8 | `src/hooks/useAutoSave.ts` (consolidated to `src/features/project/hooks/useProjectAutoSave.ts` in Step 8) | 5 | 121 |
+Modified files (5):
+- `index.html` — font preconnects + Google Fonts stylesheet
+- `src/index.css` — `--vbr-*` and `--m360-*` tokens + `::selection`
+- `tailwind.config.js` — viability/m360 namespaces, display/display-alt fonts, pill/tight/chip radii, ticker/fade-up keyframes
+- `src/App.tsx` — `/_design-preview` route + StartPageRoute prop swap
+- `src/pages/StartPage.tsx` — guest card removed, Sign In link added
 
-**Cumulative standard mechanical rewrites (still 7, still active — none exercised in 10b since this was new authoring, not porting).**
+**Step 11b-A metrics:**
+- New files: 11
+- Modified files: 5
+- Net module count: +8 (2,557 → 2,565)
+- CSS bundle: +6.2 KB (59.41 → 65.60 KB) — Tailwind picked up the new tokens/keyframes
+- Sub-agent fan-outs: 0 (sequential file ops; subagents add overhead for this kind of work)
+- Stop conditions triggered: 1 (VButton built standalone — see deviation above)
+- Smoke iterations: 1 (Playwright local sanity check; full smoke is for Max on Vercel preview)
 
-**Architectural strip log (deliberate adaptations away from Mojo 360 concepts):**
-- Step 1: `<AuthProvider>` stripped of `is_super_user`, `is_advisor`, `signInWithProvider`, `OrgProvider`
-- Step 6: `HospoOSModal` stripped of `useBusinessContext` dependency
-- Step 9b: `ProjectLayout`'s `onReturnToHub` is a no-op
-- Step 10a: dead super_admin policy + `is_project_owner_check` overloads dropped at DB layer
-- (No new strips in 10b.)
+**Cumulative inventory misses (still 8 — Step 11b-A added zero):**
+Unchanged from Step 10b handover.
 
-**Cleanup tracker:**
-- ✓ Step 7: 2 `@ts-expect-error` directives in AIBusinessPlanPage.tsx — REMOVED.
-- (No new cleanup tracker entries from 10b.)
-
-**Step 10b architectural decisions:**
-- Cross-section sync lives inside `patchProjectData` (centralised) so local state is always sync-coherent. Autosave reads coherent state and persists it — no autosave changes needed.
-- Period scaling is a synchronous local-state transform, NOT a React Query mutation. Avoids the cache-vs-local-state race that would otherwise discard user's pending edits.
-- `useUpdateProjectData` retained as a generic mutation hook — useful for explicit "persist now" calls that bypass autosave debounce. Currently no consumer; logged as available infrastructure for future steps.
-- `customFixedCosts.value` scaling closed — legacy mojo_business gap that would have shipped to viability.
-
-**Source clones in /tmp:**
-- `/tmp/mojo-business-current/` — `src/App.tsx` deleted in Phase C-light; remaining tree usable for component reads.
-- `/tmp/mojo-pre-phase-c/` — full pre-deletion clone, used for `App.tsx` references throughout extraction.
-
-**Auth surface (unchanged):**
-- `<AuthProvider>` exposes only `{ user, isLoading, signIn, signUp, signOut }`
-- Supabase client localStorage namespace: `mojo-viability-auth`
-
-**Hooks at `src/features/project/hooks/` (now 7 — net +1 from 9b's 6):**
-- `useProject.ts` (query)
-- `useProjectAutoSave.ts` (autosave)
-- `useKeyboardShortcuts.ts`
-- `useProjectPermissions.ts` (Step 9b)
-- `useRenameProject.ts` (Step 9b)
-- `useSaveProject.ts` (Step 9b)
-- **`useUpdateProjectData.ts` (Step 10b)** — generic update mutation, runs cross-section sync. No consumer yet; available for explicit-persist use cases.
-
-**Pure functions added in 10b:**
-- `applyCrossSectionSync(prev, updates)` in `src/lib/calculations/crossSectionSync.ts`
-- `scaleProjectByPeriod(prev, newPeriod)` in `src/lib/scaleProjectByPeriod.ts`
+**Architectural strip log (no new strips in 11b-A — this was new authoring of greenfield surfaces):**
+- (no additions this session)
 
 **Planning docs (read in order at session start):**
-- [`context/viability-extraction/extraction-plan-2026-05-09.md`](../context/viability-extraction/extraction-plan-2026-05-09.md) — reconciliation plan, read first
-- [`context/viability-extraction/phase-2-implementation-plan.md`](../context/viability-extraction/phase-2-implementation-plan.md) — the 12-step plan (**Step 11 = next; verification-only**)
-- [`context/viability-extraction/Q1-Q7-Decisions.md`](../context/viability-extraction/Q1-Q7-Decisions.md) — locked architectural decisions
-- [`context/viability-extraction/inventory.md`](../context/viability-extraction/inventory.md) — V-ONLY inventory
-- [`context/viability-extraction/app-tsx-anatomy.md`](../context/viability-extraction/app-tsx-anatomy.md) — App.tsx → Router map
-- [`context/viability-extraction/pre-extraction-punch-list.md`](../context/viability-extraction/pre-extraction-punch-list.md)
-- [`context/viability-extraction/phase-2.5-hub-viability-spec.md`](../context/viability-extraction/phase-2.5-hub-viability-spec.md)
+- `context/dispatches/step-11b-strategic-rebuild-index.md` — index of A–D dispatches
+- `context/dispatches/step-11b-A-tokens-and-shared.md` — THIS dispatch (now complete)
+- `context/design_handoff_landing_and_reach_out/README.md` — full design spec (read end-to-end before B/C/D)
+- `context/design_handoff_landing_and_reach_out/prototype/colors_and_type.css` — token source-of-truth
+- `context/design_handoff_landing_and_reach_out/prototype/core.jsx` — reference implementation for the seven chrome components (do NOT copy verbatim — translated to Tailwind)
+- `context/viability-extraction/extraction-plan-2026-05-09.md`
+- `context/viability-extraction/phase-2-implementation-plan.md`
+
+**Auth surface (unchanged):**
+- `<AuthProvider>` exposes `{ user, isLoading, signIn, signUp, signOut }`
+- `ViabilityHeader` now reads `useAuth().user` to flip CTAs
+
+**Hooks at `src/features/project/hooks/` (still 7 — no change in 11b-A):**
+- `useProject.ts`, `useProjectAutoSave.ts`, `useKeyboardShortcuts.ts`, `useProjectPermissions.ts`, `useRenameProject.ts`, `useSaveProject.ts`, `useUpdateProjectData.ts`
