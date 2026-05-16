@@ -61,6 +61,47 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+
+    /* ═══ Mojo Viability brand tokens ═══
+       Lifted from context/design_handoff_landing_and_reach_out/prototype/colors_and_type.css
+       These tokens are independent of the shadcn light/dark theme system.
+       The Viability public surface is always dark and addresses these directly via the
+       `viability` Tailwind namespace (see tailwind.config.js). */
+    --vbr-ink:          #080808;
+    --vbr-ink-2:        #0e0e0e;
+    --vbr-ink-3:        #141414;
+    --vbr-cream:        #f5f2ed;
+    --vbr-fg-muted:     rgba(245, 242, 237, 0.62);
+    --vbr-fg-subtle:    rgba(245, 242, 237, 0.38);
+    --vbr-fg-faint:     rgba(245, 242, 237, 0.18);
+
+    --vbr-green:        #34d399;
+    --vbr-green-hover:  #2ec07f;
+    --vbr-green-soft:   rgba(52, 211, 153, 0.12);
+    --vbr-green-softer: rgba(52, 211, 153, 0.06);
+    --vbr-green-line:   rgba(52, 211, 153, 0.28);
+    --vbr-green-on:     #062b1d;
+
+    --vbr-amber:        rgba(232, 180, 90, 0.92);
+    --vbr-amber-soft:   rgba(232, 180, 90, 0.12);
+    --vbr-amber-line:   rgba(232, 180, 90, 0.32);
+
+    --vbr-red:          #ef6a5e;
+    --vbr-red-soft:     rgba(239, 106, 94, 0.10);
+    --vbr-red-line:     rgba(239, 106, 94, 0.28);
+
+    --m360-orange:       #e8622a;
+    --m360-orange-hover: #d4571f;
+    --m360-orange-soft:  rgba(232, 98, 42, 0.10);
+    --m360-orange-line:  rgba(232, 98, 42, 0.28);
+
+    --vbr-border:        rgba(255, 255, 255, 0.07);
+    --vbr-border-strong: rgba(255, 255, 255, 0.14);
+  }
+
+  ::selection {
+    background: #34d399;
+    color: #062b1d;
   }
 
   /* Explicit light override — used on child elements to force light mode

@@ -2,12 +2,12 @@ import { BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface StartPageProps {
-  onGuest: () => void;
   onCreateAccount: () => void;
+  onSignIn: () => void;
   onBack?: () => void;
 }
 
-export function StartPage({ onGuest, onCreateAccount, onBack }: StartPageProps) {
+export function StartPage({ onCreateAccount, onSignIn, onBack }: StartPageProps) {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
 
@@ -26,33 +26,11 @@ export function StartPage({ onGuest, onCreateAccount, onBack }: StartPageProps) 
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[600px] w-full">
-
-        {/* Guest */}
-        <button
-          onClick={onGuest}
-          className={cn(
-            'mojo-card text-left flex flex-col gap-3 p-6 cursor-pointer',
-            'hover:border-border/80 transition-colors',
-            'focus:outline-none focus:ring-2 focus:ring-brand/40',
-          )}
-        >
-          <div className="font-heading font-semibold text-[0.95rem] text-foreground">
-            Try it now
-          </div>
-          <div className="font-sans text-caption text-muted-foreground leading-relaxed">
-            No sign-up needed. Simple break-even only. Work is not saved.
-          </div>
-          <div className="font-sans text-caption font-semibold mt-auto" style={{ color: 'rgba(52,211,153,1)' }}>
-            Continue as guest →
-          </div>
-        </button>
-
-        {/* Create account */}
+      <div className="flex flex-col items-center max-w-[420px] w-full">
         <button
           onClick={onCreateAccount}
           className={cn(
-            'mojo-card text-left flex flex-col gap-3 p-6 cursor-pointer',
+            'mojo-card text-left flex flex-col gap-3 p-6 cursor-pointer w-full',
             'border-brand/30 hover:border-brand/60 bg-brand/5 transition-colors',
             'focus:outline-none focus:ring-2 focus:ring-brand/40',
           )}
@@ -68,6 +46,12 @@ export function StartPage({ onGuest, onCreateAccount, onBack }: StartPageProps) 
           </div>
         </button>
 
+        <button
+          onClick={onSignIn}
+          className="mt-6 font-sans text-caption text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Already have an account? <span className="text-brand font-semibold">Sign in</span>
+        </button>
       </div>
 
       {onBack && (

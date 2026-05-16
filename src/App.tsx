@@ -13,6 +13,7 @@ import TermsPage from '@/pages/TermsPage';
 import AuthPage from '@/pages/AuthPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import WelcomePage from '@/pages/WelcomePage';
+import DesignPreview from '@/pages/_DesignPreview';
 import ProjectsListPage from '@/features/project/pages/ProjectsListPage';
 import InviteAcceptancePage from '@/features/project/pages/InviteAcceptancePage';
 import { RequireAuth } from '@/features/project/components/RequireAuth';
@@ -78,8 +79,8 @@ function StartPageRoute() {
   const navigate = useNavigate();
   return (
     <StartPage
-      onGuest={() => navigate('/projects')}
       onCreateAccount={() => navigate('/auth')}
+      onSignIn={() => navigate('/auth')}
       onBack={() => navigate('/')}
     />
   );
@@ -102,6 +103,7 @@ export default function App() {
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/auth" element={<AuthPage />} />
+                <Route path="/_design-preview" element={<DesignPreview />} />
 
                 {/* Onboarding + invite acceptance (no auth-gate; auth checks happen inside) */}
                 <Route
