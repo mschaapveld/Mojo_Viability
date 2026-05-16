@@ -1,149 +1,155 @@
-# Mojo Viability Handover — 2026-05-16 (Step 11b-A)
+# Mojo Viability Handover — 2026-05-16 (Step 11b-B)
 
 ## Session Summary
 
-Step 11 smoke (planned for this session) surfaced public-surface defects that snowballed into a strategic rebuild dispatched as four sub-dispatches (A–D). **Dispatch A — design tokens, shared chrome, and the two surviving 11a tactical items — shipped.** Foundation in place: CSS-var tokens, Tailwind namespace, fonts, M-glyph assets, seven shared chrome components, a temporary `/_design-preview` route, the `vercel.json` SPA fallback, and the StartPage guest-card hide. The existing public pages (`/`, `/how-it-works`, `/reach-out`) are untouched and render exactly as before — Dispatch B will swap LandingPage to use the new chrome.
+Dispatch 11b-B shipped. The legacy 619-LOC `LandingPage.tsx` is replaced by a ~30-LOC composition of nine new components built on Dispatch A's chrome + tokens. The Live Dossier hero is a static placeholder (`<HeroPlaceholder>`) until Dispatch C wires the interactive widget. `/_design-preview` is gone (route removed + file deleted). Stop-condition 3 fired during smoke (mobile horizontal overflow at 390px) — root cause was Dispatch A's `ViabilityFooter` and `ViabilityHeader` not collapsing on small screens, both patched in this dispatch.
 
 ## Completed
 
-**Planning docs commit** (`e9275b5` — separated from implementation per dispatch §2):
-- `context/dispatches/` — strategic-rebuild index + A/B/C/D dispatches + 11a tactical-patch + planner-training prompt
-- `context/design_handoff_landing_and_reach_out/` — README + prototype reference files + M-glyph SVGs
+**Implementation commit** (`cf6712a`):
 
-**Implementation commit** (`10e8481`):
-- [vercel.json](vercel.json) — SPA fallback rewrites; `/privacy` and `/terms` now resolve on direct navigation (replaces the 11a tactical-patch item)
-- [src/index.css](src/index.css) — Viability brand tokens (`--vbr-*`, `--m360-*`) added alongside the existing shadcn HSL system. `::selection` rule (green bg, ink fg).
-- [tailwind.config.js](tailwind.config.js) — `viability` + `m360` colour namespaces, `display` (Fraunces) / `display-alt` (Syne) / `mono` font families, `pill` / `tight` / `chip` radii, `viability-ticker` + `viability-fade-up` keyframes + animations (desktop 38s, mobile 28s). The existing `sans` already pointed to DM Sans — extending it was a no-op (no visual regression on existing pages).
-- [index.html](index.html) — Google Fonts `<link>` preconnect + stylesheet for Fraunces / Syne / DM Sans.
-- [public/icons/](public/icons/) — `m-viability.svg` and `m-mojo360.svg` (reference copies; MGlyph inlines the path).
-- Seven new components in [src/components/viability/](src/components/viability/):
-  - **MGlyph** — recolourable inline SVG, props for `size`, `color`, `ink`.
-  - **Eyebrow** — overline label, `tone='green'|'amber'`, optional leading dot.
-  - **VButton** — standalone `<button>` (NOT shadcn `<Button>` — see deviation below) with `solid`/`ghost` variants and `sm`/`md`/`lg` sizes.
-  - **HairlineLabel** — vertical hairline + mono caption.
-  - **ViabilityTicker** — full-width green marquee with `motion-safe:` gate; mobile (28s) and desktop (38s) tempo via responsive variant.
-  - **ViabilityHeader** — sticky, blur-on-scroll, auth-aware right CTA (unauthed: "Sign in" + "Try free →"; authed: "Open Viability →"). Active nav underline.
-  - **ViabilityFooter** — 4-column lockup (1.4fr 1fr 1fr 1fr) + orange Mojo 360 cross-link card + bottom strip with copyright + "Built in Port Macquarie · NSW."
-- [src/pages/_DesignPreview.tsx](src/pages/_DesignPreview.tsx) — internal-only sanity-check page mounted at `/_design-preview` (no auth gate). To be removed in Dispatch B.
-- [src/App.tsx](src/App.tsx) — `/_design-preview` route registered. StartPageRoute updated to pass `onSignIn` and drop `onGuest`.
-- [src/pages/StartPage.tsx](src/pages/StartPage.tsx) — guest card removed, grid collapsed to single column, "Already have an account? Sign in" link added below the create-account card (replaces the 11a tactical-patch item).
+New section components under [src/components/viability/landing/](src/components/viability/landing/):
+- [SectionShell.tsx](src/components/viability/landing/SectionShell.tsx) — 1180px content wrapper. `py-9 md:py-[110px]`, `px-6 md:px-14`.
+- [SectionWhat.tsx](src/components/viability/landing/SectionWhat.tsx) — "The deal-breakers fall into three places." 3 cards: The money / The location / The operations. Copy lifted verbatim from prototype.
+- [SectionBuiltFor.tsx](src/components/viability/landing/SectionBuiltFor.tsx) — "Three people land here, with the same question." 3 persona cards (First venue / Venue #2 / Investor · partner). **First card carries amber "highest stakes" pill** in the top-right.
+- [SectionHow.tsx](src/components/viability/landing/SectionHow.tsx) — "Three moves from concept to case." 3-step rail with dotted green horizontal line and 56×56 numbered circles (8px ink ring punches through the rail). Below: 2-up `ShopfrontPlaceholder` boxes.
+- [ShopfrontPlaceholder.tsx](src/components/viability/landing/ShopfrontPlaceholder.tsx) — CSS-drawn placeholder with diagonal hatch background + four corner brackets + centred mono caption. Used by `SectionHow`.
+- [SectionProof.tsx](src/components/viability/landing/SectionProof.tsx) — "~1 in 2" giant Fraunces stat with the **TODO: confirm precise ABS source + URL with Max before public launch** code comment + 3 mono badges + ABS source footnote. Right column: founder story card with green-italic-prefixed pull quote, paragraph, and `MS` avatar/name/Port Macquarie NSW.
+- [SectionMojo360.tsx](src/components/viability/landing/SectionMojo360.tsx) — Orange + Syne sibling strip. **Only place orange tokens and `font-display-alt` (Syne) appear on the Viability surface.** Decorative orange dotted side rail; orange pill CTA opens `https://mojo360.com.au` in a new tab. CTA is a custom orange `<a>` (NOT `<VButton>`, which is green-only).
+- [SectionFinalCTA.tsx](src/components/viability/landing/SectionFinalCTA.tsx) — Centred 920px block on ink bg with a 900×900 green radial wash behind. "Run the numbers before *you sign anything.*" Primary `<VButton size="lg">` → `/start` + Sign in text link → `/auth`.
+- [HeroPlaceholder.tsx](src/components/viability/landing/HeroPlaceholder.tsx) — Left rail matches eventual hero (eyebrow + h1 + subline + CTA row + stat triple). Right rail is an empty dark card with mono caption "LIVE DOSSIER · ARRIVING IN DISPATCH C".
+
+Modified:
+- [src/pages/LandingPage.tsx](src/pages/LandingPage.tsx) — fully rewritten from 619 LOC → 27 LOC. Composition only: `<ViabilityHeader> → <HeroPlaceholder> → <ViabilityTicker> → 6 sections → <ViabilityTicker> → <ViabilityFooter>`.
+- [src/App.tsx](src/App.tsx) — `/` now mounts `<LandingPage />` directly. `LandingPageRoute` wrapper removed. `_DesignPreview` import + route removed. `useLandingNav` retained for `HowItWorksPageRoute` and `ReachOutPageRoute`.
+- [src/components/viability/ViabilityHeader.tsx](src/components/viability/ViabilityHeader.tsx) — `px-6 md:px-14`, centre nav `hidden md:flex` (hidden on mobile per README — mobile gets a hamburger later, not in this dispatch).
+- [src/components/viability/ViabilityFooter.tsx](src/components/viability/ViabilityFooter.tsx) — inline `padding: '72px 56px 36px'` replaced with `pt-12 md:pt-[72px] pb-9 px-6 md:px-14`. Grid `grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_1fr] gap-10 md:gap-x-14`. Bottom strip stacks `flex-col md:flex-row`.
+
+Deleted:
+- `src/pages/_DesignPreview.tsx`
 
 **Verification**
 - `npm run typecheck`: GREEN
-- `npm run build`: GREEN (2,557 → 2,565 modules — +8 from new components + design preview; CSS 59.41 KB → 65.60 KB from new tokens/keyframes)
-- Local Playwright smoke on `/_design-preview`: 0 console errors; only the two known React Router future-flag warnings (already on Phase 2.5 list). Screenshot confirmed: header chrome correct, MGlyph renders green + orange, VButton sm/md/lg/ghost variants all rendered as pills, marquee scrolls, footer 4-column lockup with orange Mojo 360 card visible.
-- `/` (legacy LandingPage): renders unchanged — no regression.
-- `/start`: shows only the create-account card + "Already have an account? Sign in" link + Back. Guest card gone.
-
-**Architectural deviation (documented in commit message)**
-- **VButton built as standalone `<button>` rather than composing shadcn `<Button>`** (stop-condition 2 triggered). The shadcn cva had baked-in heights (`h-9`, `h-8`, `h-10`) and `rounded-md` that fought the pill radii + custom paddings. A standalone button is cleaner than overriding via className specificity wars. `asChild` support kept via `@radix-ui/react-slot` so the API stays consumer-compatible.
+- `npm run build`: GREEN (2,565 → 2,573 modules — +8 from new section components; CSS 65.60 KB → 70.01 KB)
+- Playwright smoke at 1280×900 desktop: page renders top-to-bottom in correct order. Header / hero placeholder / ticker / SectionWhat / SectionBuiltFor / SectionHow / SectionProof / SectionMojo360 / SectionFinalCTA / ticker / footer. 0 console errors; only the two known React Router future-flag warnings. No horizontal scroll (docWidth 1265, viewport 1280).
+- Playwright smoke at 390×844 mobile: **initial smoke failed with 141px overflow (stop-condition 3 triggered)**. Root cause traced via `getBoundingClientRect()` audit — Dispatch A's `ViabilityFooter` was forcing a 4-col grid + 56px inline padding even at 390px viewport. `ViabilityHeader` had the same hardcoded `px-14`. Patched both as described above. Re-smoke confirmed no horizontal scroll (docWidth 375, viewport 390). Mobile full-page screenshot shows header collapse, sections stack to single column, footer 4 cols → 1 col, Mojo 360 CTA wraps below copy.
+- `/_design-preview` → 404 (catch-all `NotFoundPage`) ✓.
+- `/`, `/how-it-works`, `/reach-out`, `/start` direct-nav check pending — left for Max's Vercel smoke.
 
 ## In Progress
 
-None — Dispatch A is a closed unit.
+None — Dispatch B is a closed unit.
 
 ## Blockers
 
-None blocking Dispatch B.
+None blocking Dispatch C.
 
 **Carried over (still outstanding for Max outside the session):**
-- Rotate the password for `admin@maxsenterprises.com.au` in Supabase. Plaintext leaked in Step 1 chat; treat as compromised.
+- Rotate the password for `admin@maxsenterprises.com.au` in Supabase (Step 1 leak).
+
+## Notes on copy interpretation
+
+Per dispatch acceptance criterion: "All copy strings reviewed against `prototype/sections.jsx` — flag in handover any line where the prototype copy was unclear and the Executor had to interpret."
+
+- **Hero subline says "Move the three sliders"** (lifted verbatim from `prototype/heroes-v2.jsx:161`). However the README's actual `LiveDossierCard` spec lists **four** sliders (Annual rent, Cost of goods, Labour, Other costs). The prototype subline appears out of date relative to the live dossier spec. Kept the prototype's "three" for now since this is a placeholder; **Dispatch C should update the subline to "Move the four sliders" when the real hero ships** OR Max should decide whether to keep "three" by hiding/folding one slider in Dispatch C.
+- **SectionBuiltFor kickers** are the persona names ("First venue", "Venue #2", "Investor · partner") per `prototype/sections.jsx`. The dispatch §4.4 said "Cards 2 and 3 use the same 02 / 03 mono kickers as 4.3" — this contradicts the prototype. Went with the prototype since the dispatch elsewhere said "lift exact titles, blurbs, and any module lists from prototype/sections.jsx". Flag for Max if numeric kickers were intended.
+- **SectionBuiltFor card BODY** dropped the "Start with this →" footer link from the prototype — the dispatch didn't reference it and there's no destination to wire it to (cards aren't currently clickable / routable). Easy to re-add in a later dispatch if needed.
+- **Founder card border-top before the avatar** uses `border-viability-border`; prototype uses `VBR.hairline` which is the same RGBA value just expressed differently.
+- **SectionProof tagline size**: prototype uses `clamp(22px, 2.2vw, 30px)`; dispatch specified `clamp(28px, 2.4vw, 36px)`. Went with the dispatch's larger size since the dispatch was explicit and more recent.
+- **SectionProof font-weight** on the giant `~1 in 2` is `font-bold` (700) per both sources.
+
+All copy reviewed; nothing else surprising.
 
 ## Phase 2.5 / future-cleanup follow-ups
 
-### Reclassified this session
-- **"StartPage's 'Try as guest' deferred"** — moved off the carry-forward list. Now intentionally hidden, not broken. Build out as part of Phase 2.5 guest-mode plumbing.
+### New from Step 11b-B
+- **(11b-B) Required before public launch:** Confirm the precise ABS source for the "~1 in 2" proof stat. Flagged in code with a `TODO` comment above the stat in `SectionProof.tsx`. The prototype's wording ("ABS-aligned analyses put five-year survival around 45–50%") + the source line ("Source · Commentaries back-checking ABS small-business counts (8165.0). Figures are approximations.") may need refinement with a precise URL or report citation before going live.
+- **(11b-B) Pre-launch review:** Founder story copy in `SectionProof.tsx` is lifted verbatim from the prototype. Max may want refinement before launch.
+- **(11b-B) Pre-Dispatch D decision:** **Retire `HowItWorksPage` route?** The new chrome has no "How It Works" entry in the nav (deliberately removed per README — the on-page section does the work). `/how-it-works` still exists and still renders the legacy `LandingHeader`. Three options: (a) delete the route + page entirely; (b) keep the route as a 301 redirect to `/#how`; (c) leave as-is until Dispatch D. Recommend deciding before D so D can clean it up.
+- **(11b-B) Pre-Dispatch D:** Same decision for `LandingHeader.tsx` — still imported by `ReachOutPage` (rewrite due in Dispatch D) and `HowItWorksPage` (decision above). Delete `LandingHeader.tsx` when both consumers are gone.
+- **(11b-B) Mobile chrome:** Mobile header currently hides the centre nav entirely (acceptable per dispatch). README spec calls for a hamburger glyph (two 18×1.5 cream bars, gap 4) — defer to a Phase 2.5 / mobile-polish dispatch.
+- **(11b-B) Hero subline:** "Move the three sliders" vs the four-slider live dossier — see Notes above. Dispatch C should resolve.
 
-### New from Step 11b-A
-- **(11b-A) Phase 2.5 — confirm ABN with Max.** Footer copyright currently shows `ABN ###` as a placeholder with a `// TODO` comment. Replace before public launch.
-- **(11b-A) Phase 2.5 — Mojo 360 footer card uses bg gradient + inline style** (Tailwind doesn't support `background-image: linear-gradient(...)` over a solid in arbitrary-value form cleanly). Acceptable; could move to a custom utility if it spreads beyond one site.
+### Reclassified from prior steps
+- "StartPage's 'Try as guest' deferred" — moved off the carry-forward list in Dispatch A.
 
-### From prior steps (still outstanding)
-- **(10b reclassified at NORMAL)** Phase 2.5 wishlist — `occupancyType` cross-section feature (rent ↔ mortgage swap). Forward feature work, not a port-fidelity bug.
-- **(10b LOW)** Opt into React Router v7 future flags (`v7_startTransition`, `v7_relativeSplatPath`). Cosmetic dev-console warnings.
-- **(10a LOW)** Triple-nested EXISTS in `project_content_uploads`'s "Business members can view uploads of linked assessments" policy.
-- **(10a)** Both new indexes (`idx_business_scenarios_business_id`, `idx_business_scenarios_business_active`) currently appear in `unused_index` advisor.
-- **Phase 2.5 (Step 9b):** Inline rename dialog placeholder (~30 LOC); full `<EditProjectSettingsDialog>` per anatomy §1.4.
-- **Phase 2.5 (Step 9b):** Inline export dialog is PDF+Excel only; full 3-button export per anatomy §1.4.
-- **Phase 2.5 (Step 9b):** "New project" creation flow is a stub.
-- **Future-cleanup (LOW, Step 9b):** `@/lib/export` index re-exports invisible to TS bundler module resolution.
-- **Phase 2.5 (Step 9):** `StartPage`'s "Try as guest" — see reclassification above.
-- **Phase 2.5 (Step 9):** `InviteAcceptancePage` is a placeholder.
-- **Future-cleanup (Step 9):** `ProjectsListPage` uses `useEffect` + manual fetch instead of `useQuery`.
+### From Step 11b-A (still outstanding)
+- Confirm ABN with Max (footer placeholder `ABN ###`).
+- Mojo 360 footer card uses inline-style gradient — acceptable.
+
+### From prior steps (unchanged)
+- (10b NORMAL) Phase 2.5 wishlist: `occupancyType` cross-section feature (rent ↔ mortgage swap).
+- (10b LOW) Opt into React Router v7 future flags.
+- (10a LOW) Triple-nested EXISTS in `project_content_uploads` RLS policy.
+- (10a) Unused-index advisors for `business_scenarios` indexes.
+- (9b) Inline rename dialog placeholder; full `<EditProjectSettingsDialog>` per anatomy §1.4.
+- (9b) Inline export dialog (PDF+Excel only); full 3-button export per anatomy §1.4.
+- (9b) "New project" creation flow is a stub.
+- (9b LOW) `@/lib/export` index re-exports invisible to TS bundler module resolution.
+- (9) `InviteAcceptancePage` is a placeholder.
+- (9) `ProjectsListPage` uses `useEffect` + manual fetch instead of `useQuery`.
 
 ## Next Session
 
-**Smoke Dispatch A on Vercel preview.** Max runs the §6 smoke script (S1–S16) on the deployed preview URL — focuses on:
-- S1, S2: Direct navigation to `/privacy` and `/terms` (validates `vercel.json` rewrites). **Cannot be validated locally with `vite preview` alone** — this is the production-only validation step.
-- S3–S10: `/_design-preview` chrome behaviours.
-- S11: Reduce Motion freezes the ticker.
-- S12, S13: `/start` shows only create-account + Sign in link.
-- S14: `/` legacy LandingPage still renders.
-- S15, S16: Network shows Fraunces/Syne/DM Sans woff2 loads; console clean.
+**Smoke Dispatch B on Vercel preview.** Max runs the §6 smoke (S1–S16) on the deployed preview URL — full landing top-to-bottom + Mojo 360 link opens new tab + auth-aware header CTA flip + mobile collapse without horizontal scroll + `/_design-preview` 404 + no regressions on legacy pages.
 
-**If smoke is green → request Dispatch B from the Planner.** Dispatch B will:
-- Replace the `/` `LandingPage` with the new chrome
-- Build out the hero, the live dossier interactive widget, and the seven landing sections
-- Delete the unused `LandingHeader.tsx` once nothing imports it
-- Remove the temporary `/_design-preview` route
+**If smoke is green → request Dispatch C from the Planner.** Dispatch C will replace `<HeroPlaceholder>` with the interactive Live Dossier (4 sliders, threshold-driven traffic-light verdict, sample-venue presets, derived margin calculations). The dossier itself is the page's centrepiece — it's the differentiator that justifies the new landing.
 
-**If smoke surfaces issues:** fix in place, re-commit, re-smoke. Don't proceed to Dispatch B until A is clean.
+**If smoke surfaces issues:** fix in place, re-commit, re-smoke. Don't proceed to Dispatch C until B is clean.
 
 ## Key References
 
 **Commits this session:**
-- Planning docs: `e9275b5 docs: Step 11b planning + design handoff materials`
-- **Implementation: `10e8481 feat: viability design tokens + shared chrome (Step 11b-A)`**
-- Branch: `main` (1 commit ahead of `origin/main` after docs commit; 2 ahead after implementation commit)
+- **Implementation: `cf6712a feat: viability landing page rewrite + six sections (Step 11b-B)`** — 14 files, +620 / −690 LOC (net -70).
+- Branch: `main` (now 3 commits ahead of `origin/main` after the docs + Dispatch A + Dispatch B commits — push when ready).
 
-**Files added/modified:**
+**Files added (9):**
+- `src/components/viability/landing/SectionShell.tsx`
+- `src/components/viability/landing/SectionWhat.tsx`
+- `src/components/viability/landing/SectionBuiltFor.tsx`
+- `src/components/viability/landing/ShopfrontPlaceholder.tsx`
+- `src/components/viability/landing/SectionHow.tsx`
+- `src/components/viability/landing/SectionProof.tsx`
+- `src/components/viability/landing/SectionMojo360.tsx`
+- `src/components/viability/landing/SectionFinalCTA.tsx`
+- `src/components/viability/landing/HeroPlaceholder.tsx`
 
-New files (11):
-- `vercel.json`
-- `public/icons/m-viability.svg`, `public/icons/m-mojo360.svg`
-- `src/components/viability/MGlyph.tsx`
-- `src/components/viability/Eyebrow.tsx`
-- `src/components/viability/VButton.tsx`
-- `src/components/viability/HairlineLabel.tsx`
-- `src/components/viability/ViabilityTicker.tsx`
-- `src/components/viability/ViabilityHeader.tsx`
-- `src/components/viability/ViabilityFooter.tsx`
+**Files modified (4):**
+- `src/pages/LandingPage.tsx` — 619 → 27 LOC
+- `src/App.tsx` — drop `LandingPageRoute` + `_DesignPreview` import/route
+- `src/components/viability/ViabilityHeader.tsx` — mobile responsiveness fix
+- `src/components/viability/ViabilityFooter.tsx` — mobile responsiveness fix
+
+**Files deleted (1):**
 - `src/pages/_DesignPreview.tsx`
 
-Modified files (5):
-- `index.html` — font preconnects + Google Fonts stylesheet
-- `src/index.css` — `--vbr-*` and `--m360-*` tokens + `::selection`
-- `tailwind.config.js` — viability/m360 namespaces, display/display-alt fonts, pill/tight/chip radii, ticker/fade-up keyframes
-- `src/App.tsx` — `/_design-preview` route + StartPageRoute prop swap
-- `src/pages/StartPage.tsx` — guest card removed, Sign In link added
+**Step 11b-B metrics:**
+- Module count: 2,565 → 2,573 (+8 net)
+- CSS bundle: 65.60 KB → 70.01 KB (+4.4 KB — Tailwind picked up section utilities)
+- LandingPage: 619 LOC → 27 LOC (~96% reduction)
+- Sub-agent fan-outs: 0
+- Stop conditions triggered: 1 (mobile horizontal overflow at 390px — patched in same commit)
+- Smoke iterations: 2 (initial desktop smoke green; mobile smoke failed → patched chrome → re-smoke green)
 
-**Step 11b-A metrics:**
-- New files: 11
-- Modified files: 5
-- Net module count: +8 (2,557 → 2,565)
-- CSS bundle: +6.2 KB (59.41 → 65.60 KB) — Tailwind picked up the new tokens/keyframes
-- Sub-agent fan-outs: 0 (sequential file ops; subagents add overhead for this kind of work)
-- Stop conditions triggered: 1 (VButton built standalone — see deviation above)
-- Smoke iterations: 1 (Playwright local sanity check; full smoke is for Max on Vercel preview)
-
-**Cumulative inventory misses (still 8 — Step 11b-A added zero):**
-Unchanged from Step 10b handover.
-
-**Architectural strip log (no new strips in 11b-A — this was new authoring of greenfield surfaces):**
+**Architectural strip log (no Mojo 360 concepts stripped in 11b-B):**
 - (no additions this session)
 
+**Cumulative inventory misses (still 8 — Step 11b-B added zero):**
+- Unchanged from prior handovers.
+
 **Planning docs (read in order at session start):**
-- `context/dispatches/step-11b-strategic-rebuild-index.md` — index of A–D dispatches
-- `context/dispatches/step-11b-A-tokens-and-shared.md` — THIS dispatch (now complete)
-- `context/design_handoff_landing_and_reach_out/README.md` — full design spec (read end-to-end before B/C/D)
-- `context/design_handoff_landing_and_reach_out/prototype/colors_and_type.css` — token source-of-truth
-- `context/design_handoff_landing_and_reach_out/prototype/core.jsx` — reference implementation for the seven chrome components (do NOT copy verbatim — translated to Tailwind)
+- `context/dispatches/step-11b-strategic-rebuild-index.md`
+- `context/dispatches/step-11b-A-tokens-and-shared.md` (complete)
+- `context/dispatches/step-11b-B-landing-and-sections.md` (THIS dispatch, now complete) — actual filename TBD; search `context/dispatches/` for the most recent landing dispatch
+- `context/design_handoff_landing_and_reach_out/README.md` — full design spec
+- `context/design_handoff_landing_and_reach_out/prototype/sections.jsx` — source of truth for section copy
+- `context/design_handoff_landing_and_reach_out/prototype/heroes-v2.jsx` — source of truth for hero copy + the Live Dossier spec (for Dispatch C)
 - `context/viability-extraction/extraction-plan-2026-05-09.md`
 - `context/viability-extraction/phase-2-implementation-plan.md`
 
 **Auth surface (unchanged):**
 - `<AuthProvider>` exposes `{ user, isLoading, signIn, signUp, signOut }`
-- `ViabilityHeader` now reads `useAuth().user` to flip CTAs
+- `<ViabilityHeader>` reads `useAuth().user` to flip CTAs
 
-**Hooks at `src/features/project/hooks/` (still 7 — no change in 11b-A):**
+**Hooks at `src/features/project/hooks/` (still 7 — no change in 11b-B):**
 - `useProject.ts`, `useProjectAutoSave.ts`, `useKeyboardShortcuts.ts`, `useProjectPermissions.ts`, `useRenameProject.ts`, `useSaveProject.ts`, `useUpdateProjectData.ts`
