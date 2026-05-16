@@ -1,0 +1,180 @@
+/* ═════════════════════════════════════════════════════════════
+   Mojo Viability — Colors & Type
+   Source of truth for design tokens.
+   Usage: <link rel="stylesheet" href="colors_and_type.css">
+   ═════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,500;1,9..144,600&family=Syne:wght@500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  /* ═══ BRAND ═══ */
+  --vbr-green:        #34d399;          /* Primary action — emerald */
+  --vbr-green-hover:  #2ec07f;
+  --vbr-green-soft:   rgba(52, 211, 153, 0.12);
+  --vbr-green-softer: rgba(52, 211, 153, 0.06);
+  --vbr-green-line:   rgba(52, 211, 153, 0.28);
+  --vbr-green-on:     #062b1d;          /* Text colour on green fills */
+
+  --vbr-amber:        rgba(232, 180, 90, 0.92);   /* Reserved second accent — deal-breakers, sparingly */
+  --vbr-amber-soft:   rgba(232, 180, 90, 0.12);
+  --vbr-amber-line:   rgba(232, 180, 90, 0.32);
+
+  /* ═══ INK + CREAM ═══ */
+  --vbr-ink:          #080808;          /* Page canvas */
+  --vbr-ink-2:        #0e0e0e;          /* Card surface */
+  --vbr-ink-3:        #141414;          /* Elevated surface */
+  --vbr-cream:        #f5f2ed;          /* Foreground */
+  --vbr-fg-muted:     rgba(245, 242, 237, 0.62);
+  --vbr-fg-subtle:    rgba(245, 242, 237, 0.38);
+  --vbr-fg-faint:     rgba(245, 242, 237, 0.18);
+
+  /* ═══ BORDERS ═══ */
+  --vbr-border:        rgba(255, 255, 255, 0.07);
+  --vbr-border-strong: rgba(255, 255, 255, 0.14);
+  --vbr-hairline:      0.5px solid rgba(255, 255, 255, 0.07);
+
+  /* ═══ MOJO 360 CROSS-LINK — sibling accent ═══ */
+  /* Only used inside the inline Mojo 360 strip so the sibling brand reads as its own thing. */
+  --m360-orange:       #e8622a;
+  --m360-orange-hover: #d4571f;
+  --m360-orange-soft:  rgba(232, 98, 42, 0.10);
+  --m360-orange-line:  rgba(232, 98, 42, 0.28);
+
+  /* ═══ TYPE ═══ */
+  --vbr-font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --vbr-font-display-alt: 'Syne', 'Helvetica Neue', Helvetica, system-ui, sans-serif;  /* Mojo 360 strip only */
+  --vbr-font-body:    'DM Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --vbr-font-mono:    ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* Display sizes (clamp to viewport). */
+  --vbr-fs-display-xl: clamp(56px, 7.4vw, 108px);    /* Editorial hero h1 */
+  --vbr-fs-display-l:  clamp(48px, 5.4vw, 78px);     /* Dossier / module-flow h1 */
+  --vbr-fs-display-m:  clamp(38px, 4.2vw, 60px);     /* Section h2 */
+  --vbr-fs-display-s:  clamp(28px, 2.4vw, 36px);     /* Subsection / card */
+  --vbr-fs-stat-mega:  clamp(72px, 9vw, 132px);      /* The proof stat */
+
+  /* Body sizes. */
+  --vbr-fs-body-lg:    17px;
+  --vbr-fs-body:       14.5px;
+  --vbr-fs-body-sm:    13.5px;
+  --vbr-fs-mono-meta:  11px;
+  --vbr-fs-eyebrow:    11px;
+
+  /* Line-height + tracking. */
+  --vbr-lh-display: 0.96;
+  --vbr-lh-body:    1.6;
+  --vbr-ls-display: -0.035em;
+  --vbr-ls-eyebrow: 0.18em;
+
+  /* ═══ RADIUS ═══ */
+  --vbr-radius-pill: 9999px;
+  --vbr-radius-card: 6px;
+  --vbr-radius-chip: 8px;
+  --vbr-radius-icon: 12px;
+
+  /* ═══ SHADOWS ═══ */
+  --vbr-shadow-cta-hover: 0 6px 24px rgba(52, 211, 153, 0.30);
+  --vbr-shadow-pill:      0 4px 14px rgba(52, 211, 153, 0.18);
+  --vbr-shadow-dossier:   0 30px 80px rgba(0, 0, 0, 0.55);
+
+  /* ═══ SPACING ═══ */
+  --vbr-sp-1: 4px;   --vbr-sp-2: 8px;   --vbr-sp-3: 12px;  --vbr-sp-4: 16px;
+  --vbr-sp-5: 22px;  --vbr-sp-6: 28px;  --vbr-sp-8: 36px;  --vbr-sp-10: 48px;
+  --vbr-sp-12: 56px; --vbr-sp-16: 72px; --vbr-sp-20: 110px;
+
+  /* ═══ LAYOUT ═══ */
+  --vbr-maxw: 1180px;          /* Landing section max width */
+  --vbr-maxw-final: 920px;     /* Final CTA centred block */
+  --vbr-maxw-prose: 620px;     /* Any body paragraph */
+  --vbr-section-pad-y: 110px;
+  --vbr-section-pad-x: 56px;
+
+  /* ═══ MOTION ═══ */
+  --vbr-ticker-duration: 38s;
+  --vbr-fade-up-duration: 0.8s;
+  --vbr-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Base element styles ─── */
+html, body {
+  font-family: var(--vbr-font-body);
+  font-feature-settings: "tnum";
+  color: var(--vbr-cream);
+  background: var(--vbr-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--vbr-green);
+  color: var(--vbr-green-on);
+}
+
+/* ─── Semantic text roles ─── */
+.vbr-display-xl {
+  font-family: var(--vbr-font-display);
+  font-weight: 600;
+  font-size: var(--vbr-fs-display-xl);
+  line-height: var(--vbr-lh-display);
+  letter-spacing: var(--vbr-ls-display);
+  margin: 0;
+  text-wrap: balance;
+}
+.vbr-display-l {
+  font-family: var(--vbr-font-display);
+  font-weight: 600;
+  font-size: var(--vbr-fs-display-l);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  margin: 0;
+  text-wrap: balance;
+}
+.vbr-h2 {
+  font-family: var(--vbr-font-display);
+  font-weight: 600;
+  font-size: var(--vbr-fs-display-m);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  margin: 0;
+  text-wrap: balance;
+}
+.vbr-h3 {
+  font-family: var(--vbr-font-display);
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.vbr-body-lg {
+  font-family: var(--vbr-font-body);
+  font-weight: 300;
+  font-size: var(--vbr-fs-body-lg);
+  line-height: 1.55;
+}
+.vbr-body {
+  font-family: var(--vbr-font-body);
+  font-weight: 300;
+  font-size: var(--vbr-fs-body);
+  line-height: var(--vbr-lh-body);
+}
+.vbr-body-sm {
+  font-family: var(--vbr-font-body);
+  font-weight: 300;
+  font-size: var(--vbr-fs-body-sm);
+  line-height: 1.55;
+}
+.vbr-eyebrow {
+  font-family: var(--vbr-font-body);
+  font-weight: 500;
+  font-size: var(--vbr-fs-eyebrow);
+  letter-spacing: var(--vbr-ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--vbr-green);
+}
+.vbr-mono-meta {
+  font-family: var(--vbr-font-mono);
+  font-size: var(--vbr-fs-mono-meta);
+  letter-spacing: 0.06em;
+  color: var(--vbr-fg-subtle);
+}
+.vbr-mono-tnum { font-variant-numeric: tabular-nums; }

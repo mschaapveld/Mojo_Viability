@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mojo Viability — Landing · refined v2</title>
+<link rel="icon" href="assets/Icon_M_Viability.svg"/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="colors_and_type.css"/>
+
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    background: #f0eee9;
+    color: #f5f2ed;
+    font-family: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  #root { width: 100vw; min-height: 100vh; }
+  ::selection { background: #34d399; color: #062b1d; }
+  .dc-card *::-webkit-scrollbar { display: none; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="./design-canvas.jsx"></script>
+<script type="text/babel" src="./tweaks-panel.jsx"></script>
+
+<script type="text/babel" src="./core.jsx"></script>
+<script type="text/babel" src="./sections.jsx"></script>
+<script type="text/babel" src="./heroes-v2.jsx"></script>
+<script type="text/babel" src="./shells-v2.jsx"></script>
+<script type="text/babel" src="./mobile-v2.jsx"></script>
+<script type="text/babel" src="./reach-out.jsx"></script>
+
+<script type="text/babel">
+/* ─── Tweak defaults — persisted via the host. ─── */
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "showAmber": true,
+  "dossierState": "empty",
+  "venueKey": "cafe",
+  "showMojo360": true
+}/*EDITMODE-END*/;
+
+const VENUE_OPTIONS = [
+  { value: 'cafe',    label: 'Suburban café · Melbourne' },
+  { value: 'winebar', label: 'Small wine bar · Sydney' },
+  { value: 'pub',     label: 'Regional pub · VIC' },
+];
+
+const STATE_OPTIONS = [
+  { value: 'empty',    label: 'Empty' },
+  { value: 'mid',      label: 'Mid-flow' },
+  { value: 'complete', label: 'Complete' },
+];
+
+function Root() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  /* Each artboard receives the same tweak state. The artboards are independent
+     React subtrees but they all live inside Root, so a tweak change re-renders
+     all four. */
+
+  const sharedProps = {
+    showAmber: t.showAmber,
+    showMojo360Strip: t.showMojo360,
+    showCrossLink: t.showMojo360,
+    venueKey: t.venueKey,
+    dossierState: t.dossierState,
+  };
+
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection
+          id="live-dossier"
+          title="Mojo Viability · landing"
+          subtitle="Hero is an interactive mini-calculator. Three percentage sliders — COGS, Labour, Other costs — and the leftover is the net margin. Traffic lights fire as ratios drift; the verdict bar at the bottom resolves to Viable / Tight / Walk away."
+        >
+          <DCArtboard id="desktop" label="Desktop · 1180w" width={1180} height={5320}>
+            <div style={{ width: '100%', minHeight: '100%', background: '#080808', overflow: 'hidden' }}>
+              <FullLandingV2 {...sharedProps}/>
+            </div>
+          </DCArtboard>
+          <DCArtboard id="mobile" label="Mobile · 390w" width={390} height={1760}>
+            <div style={{ width: '100%', minHeight: '100%', background: '#080808', overflow: 'hidden' }}>
+              <MobileLandingV2
+                showAmber={t.showAmber}
+                showCrossLink={t.showMojo360}
+                venueKey={t.venueKey}
+                dossierState={t.dossierState}
+              />
+            </div>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection
+          id="reach-out"
+          title="Mojo Viability · Reach out"
+          subtitle="Contact page. Short editorial form (name, email, where-you're-at pill picker, message) + a founder card with a quote, response window, and direct channels. Submit transitions inline to a 'received' state."
+        >
+          <DCArtboard id="reach-desktop" label="Desktop · 1180w" width={1180} height={1480}>
+            <div style={{ width: '100%', minHeight: '100%', background: '#080808', overflow: 'hidden' }}>
+              <ReachOutDesktop showAmber={t.showAmber} showMojo360Strip={t.showMojo360} showCrossLink={t.showMojo360}/>
+            </div>
+          </DCArtboard>
+          <DCArtboard id="reach-mobile" label="Mobile · 390w" width={390} height={1340}>
+            <div style={{ width: '100%', minHeight: '100%', background: '#080808', overflow: 'hidden' }}>
+              <ReachOutMobile showAmber={t.showAmber} showCrossLink={t.showMojo360}/>
+            </div>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Stakes treatment">
+          <TweakRadio
+            label="Amber loudness"
+            value={t.showAmber ? 'loud' : 'quiet'}
+            options={[
+              { value: 'loud',  label: 'Loud' },
+              { value: 'quiet', label: 'Quiet' },
+            ]}
+            onChange={(v) => setTweak('showAmber', v === 'loud')}
+          />
+        </TweakSection>
+
+        <TweakSection label="Variation A · live dossier">
+          <TweakRadio
+            label="Starting state"
+            value={t.dossierState}
+            options={STATE_OPTIONS}
+            onChange={(v) => setTweak('dossierState', v)}
+          />
+          <TweakSelect
+            label="Sample venue"
+            value={t.venueKey}
+            options={VENUE_OPTIONS}
+            onChange={(v) => setTweak('venueKey', v)}
+          />
+        </TweakSection>
+
+        <TweakSection label="Cross-link">
+          <TweakToggle
+            label="Show Mojo 360 strip"
+            value={t.showMojo360}
+            onChange={(v) => setTweak('showMojo360', v)}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+</script>
+</body>
+</html>
