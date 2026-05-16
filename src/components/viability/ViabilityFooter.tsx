@@ -18,14 +18,8 @@ export function ViabilityFooter({ showMojo360 = true }: ViabilityFooterProps) {
   const navigate = useNavigate();
 
   return (
-    <footer
-      className="w-full bg-[#050505] border-t border-viability-border"
-      style={{ padding: '72px 56px 36px' }}
-    >
-      <div
-        className="grid gap-x-14"
-        style={{ gridTemplateColumns: '1.4fr 1fr 1fr 1fr', maxWidth: 1180, margin: '0 auto' }}
-      >
+    <footer className="w-full bg-[#050505] border-t border-viability-border pt-12 md:pt-[72px] pb-9 px-6 md:px-14">
+      <div className="max-w-[1180px] mx-auto grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_1fr] gap-10 md:gap-x-14">
         {/* Column 1: Lockup + positioning */}
         <div>
           <div className="inline-flex items-center gap-[11px] mb-4">
@@ -114,11 +108,10 @@ export function ViabilityFooter({ showMojo360 = true }: ViabilityFooterProps) {
       {/* Bottom strip */}
       <div
         className={cn(
-          'mt-9 pt-6 border-t border-viability-border',
-          'flex justify-between items-center',
+          'max-w-[1180px] mx-auto mt-9 pt-6 border-t border-viability-border',
+          'flex flex-col md:flex-row md:justify-between md:items-center gap-3',
           'font-mono text-[11px] text-viability-fg-subtle',
         )}
-        style={{ maxWidth: 1180, margin: '36px auto 0' }}
       >
         {/* TODO: confirm ABN with Max */}
         <span>© 2026 Mojo Pty Ltd · ABN ###</span>

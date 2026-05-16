@@ -13,7 +13,6 @@ import TermsPage from '@/pages/TermsPage';
 import AuthPage from '@/pages/AuthPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import WelcomePage from '@/pages/WelcomePage';
-import DesignPreview from '@/pages/_DesignPreview';
 import ProjectsListPage from '@/features/project/pages/ProjectsListPage';
 import InviteAcceptancePage from '@/features/project/pages/InviteAcceptancePage';
 import { RequireAuth } from '@/features/project/components/RequireAuth';
@@ -60,11 +59,6 @@ function useLandingNav() {
   return { onLaunch, onViability, onNavigate };
 }
 
-function LandingPageRoute() {
-  const props = useLandingNav();
-  return <LandingPage {...props} />;
-}
-
 function HowItWorksPageRoute() {
   const props = useLandingNav();
   return <HowItWorksPage {...props} />;
@@ -96,14 +90,13 @@ export default function App() {
               <AuthProvider>
                 <Routes>
                 {/* Public routes */}
-                <Route path="/" element={<LandingPageRoute />} />
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/how-it-works" element={<HowItWorksPageRoute />} />
                 <Route path="/reach-out" element={<ReachOutPageRoute />} />
                 <Route path="/start" element={<StartPageRoute />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/auth" element={<AuthPage />} />
-                <Route path="/_design-preview" element={<DesignPreview />} />
 
                 {/* Onboarding + invite acceptance (no auth-gate; auth checks happen inside) */}
                 <Route

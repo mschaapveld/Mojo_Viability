@@ -26,7 +26,7 @@ export function ViabilityHeader({ activePage = 'home' }: ViabilityHeaderProps) {
       className={cn(
         'sticky top-0 z-50 w-full',
         'flex items-center justify-between',
-        'px-14 py-5',
+        'px-6 md:px-14 py-4 md:py-5',
         'transition-[background-color,backdrop-filter,border-color] duration-200',
         scrolled
           ? 'bg-black/45 backdrop-blur-md border-b border-viability-border'
@@ -49,7 +49,7 @@ export function ViabilityHeader({ activePage = 'home' }: ViabilityHeaderProps) {
         </span>
       </button>
 
-      <nav className="absolute left-1/2 -translate-x-1/2 flex items-center gap-7">
+      <nav className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-7">
         <button
           type="button"
           onClick={() => navigate('/')}
