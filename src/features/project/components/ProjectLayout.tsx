@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useMemo, useState, useEffect } 
 import { Outlet, useLocation, useNavigate, useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Pencil, HelpCircle, LogOut } from 'lucide-react';
+import { MGlyph } from '@/components/viability/MGlyph';
+import { VButton } from '@/components/viability/VButton';
 import {
   Dialog,
   DialogContent,
@@ -245,24 +247,83 @@ export function ProjectLayout() {
 
   return (
     <ProjectContext.Provider value={value}>
-      <div className="min-h-screen flex flex-col bg-background">
-        {/* Top header */}
-        <header
-          className="flex items-center justify-between border-b bg-card"
-          style={{ height: 48, paddingLeft: '1rem', paddingRight: '1rem', flexShrink: 0 }}
-        >
-          <Link to="/projects" className="text-sm font-semibold tracking-tight">
-            Mojo Viability
-          </Link>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setShowHelpDialog(true)}>
-              <HelpCircle className="h-4 w-4 mr-1" /> Help
-            </Button>
-            {user && (
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-1" /> Sign out
-              </Button>
-            )}
+      <div className="min-h-screen flex flex-col bg-viability-ink">
+        {/* Top bar — Viability dark schema */}
+        <header className="sticky top-0 z-50 w-full bg-viability-ink border-b border-viability-border">
+          <div className="py-4 px-6 flex justify-between items-center gap-4">
+            {/* Left: lockup */}
+            <button
+              type="button"
+              onClick={() => navigate('/projects')}
+              className="flex items-center gap-3 min-w-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viability-green-line rounded-tight"
+              aria-label="Back to your projects"
+            >
+              <MGlyph size={24} />
+              <span
+                className="font-display font-bold text-[19px] flex items-baseline gap-1 min-w-0"
+                style={{ letterSpacing: '-0.02em' }}
+              >
+                <span className="text-viability-green">Mojo</span>
+                <span className="text-viability-cream">Viability</span>
+                {row.name && (
+                  <span className="font-sans font-normal text-[14px] text-viability-fg-muted truncate ml-2">
+                    · {row.name}
+                  </span>
+                )}
+              </span>
+            </button>
+
+            {/* Centre: period selector */}
+            <div className="flex items-center">
+              <Select
+                value={project.period}
+                onValueChange={(value) => handlePeriodChange(value as Period)}
+              >
+                <SelectTrigger
+                  className="bg-viability-ink-2 border border-viability-border rounded-tight text-viability-cream text-[13px] px-4 py-2 h-auto w-32"
+                  aria-label="Period"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-viability-ink-3 border border-viability-border text-viability-cream">
+                  <SelectItem value="Weekly" className="focus:bg-viability-ink-2 focus:text-viability-cream">
+                    Weekly
+                  </SelectItem>
+                  <SelectItem value="Monthly" className="focus:bg-viability-ink-2 focus:text-viability-cream">
+                    Monthly
+                  </SelectItem>
+                  <SelectItem value="Yearly" className="focus:bg-viability-ink-2 focus:text-viability-cream">
+                    Yearly
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Right: icon buttons + sign out */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={openRenameDialog}
+                aria-label="Edit project name"
+                className="w-9 h-9 text-viability-fg-muted hover:text-viability-cream hover:bg-[rgba(245,242,237,0.06)] rounded-tight transition-colors flex items-center justify-center"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowHelpDialog(true)}
+                aria-label="Help"
+                className="w-9 h-9 text-viability-fg-muted hover:text-viability-cream hover:bg-[rgba(245,242,237,0.06)] rounded-tight transition-colors flex items-center justify-center"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+              {user && (
+                <VButton size="sm" variant="ghost" onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </VButton>
+              )}
+            </div>
           </div>
         </header>
 
@@ -286,40 +347,14 @@ export function ProjectLayout() {
 
         {/* Main content (offset by sidebar width) */}
         <main className="flex-1" style={{ marginLeft: '16rem', paddingBottom: '5rem' }}>
-          {/* Sub-header: project name + locality + period + save status */}
+          {/* Sub-header: locality + save status (project name + edit pencil + period now live in top-bar) */}
           <div className="border-b bg-card/50 px-6 py-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-semibold truncate">{row.name}</h1>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={openRenameDialog}
-                    aria-label="Edit project name"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-                {project.storeTown && (
-                  <p className="text-xs text-muted-foreground truncate">{project.storeTown}</p>
-                )}
-              </div>
+              {project.storeTown && (
+                <p className="text-xs text-muted-foreground truncate">{project.storeTown}</p>
+              )}
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
-              <Select
-                value={project.period}
-                onValueChange={(value) => handlePeriodChange(value as Period)}
-              >
-                <SelectTrigger className="w-32" aria-label="Period">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Weekly">Weekly</SelectItem>
-                  <SelectItem value="Monthly">Monthly</SelectItem>
-                  <SelectItem value="Yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
               <SaveStatusIndicator
                 status={autoSave.saveStatus}
                 error={autoSave.error}
