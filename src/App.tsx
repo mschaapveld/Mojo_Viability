@@ -11,6 +11,7 @@ import { StartPage } from '@/pages/StartPage';
 import PrivacyPage from '@/pages/PrivacyPage';
 import TermsPage from '@/pages/TermsPage';
 import AuthPage from '@/pages/AuthPage';
+import AuthResetPage from '@/pages/AuthResetPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import WelcomePage from '@/pages/WelcomePage';
 import ProjectsListPage from '@/features/project/pages/ProjectsListPage';
@@ -97,6 +98,7 @@ export default function App() {
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/auth" element={<AuthPage />} />
+                <Route path="/auth/reset" element={<AuthResetPage />} />
 
                 {/* Onboarding + invite acceptance (no auth-gate; auth checks happen inside) */}
                 <Route

@@ -1,102 +1,188 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/providers/AuthProvider';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/providers/AuthProvider';
+import { AuthCard } from '@/components/viability/auth/AuthCard';
+import { AuthField } from '@/components/viability/auth/AuthField';
+import { VButton } from '@/components/viability/VButton';
 
-type Mode = 'sign-in' | 'sign-up';
+type Mode = 'sign-in' | 'sign-up' | 'forgot-password';
+type Status = 'idle' | 'submitting' | 'reset-sent';
+
+const TITLES: Record<Mode, { title: string; description: string }> = {
+  'sign-in': {
+    title: 'Sign in',
+    description: 'Welcome back to Mojo Viability.',
+  },
+  'sign-up': {
+    title: 'Create your account',
+    description: 'Free forever. No credit card.',
+  },
+  'forgot-password': {
+    title: 'Reset your password',
+    description: 'Enter your email and we’ll send you a link.',
+  },
+};
+
+const SUBMIT_LABELS: Record<Mode, { idle: string; submitting: string }> = {
+  'sign-in': { idle: 'Sign in →', submitting: 'Signing in…' },
+  'sign-up': { idle: 'Create account →', submitting: 'Creating…' },
+  'forgot-password': { idle: 'Send reset link →', submitting: 'Sending…' },
+};
 
 export default function AuthPage() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, requestPasswordReset } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>('sign-in');
+  const [status, setStatus] = useState<Status>('idle');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    setStatus('idle');
+    setErrorMsg(null);
+  }, [mode]);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
+    setErrorMsg(null);
+    setStatus('submitting');
     try {
       if (mode === 'sign-in') {
         await signIn(email, password);
         navigate('/projects');
-      } else {
+      } else if (mode === 'sign-up') {
         await signUp(email, password);
         toast.success('Check your email to confirm your account.');
+        setStatus('idle');
+      } else {
+        await requestPasswordReset(email);
+        setStatus('reset-sent');
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Something went wrong.');
-    } finally {
-      setSubmitting(false);
+      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong.');
+      setStatus('idle');
     }
   };
 
+  const resetToSignIn = () => {
+    setMode('sign-in');
+    setStatus('idle');
+    setEmail('');
+    setPassword('');
+    setErrorMsg(null);
+  };
+
+  const footer = (() => {
+    if (mode === 'sign-in') {
+      return (
+        <>
+          <div>
+            Don’t have an account?{' '}
+            <button
+              type="button"
+              onClick={() => setMode('sign-up')}
+              className="text-viability-green hover:text-viability-green-hover underline-offset-2 hover:underline"
+            >
+              Create one
+            </button>
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={() => setMode('forgot-password')}
+              className="text-viability-fg-muted hover:text-viability-cream underline-offset-2 hover:underline"
+            >
+              Forgot your password?
+            </button>
+          </div>
+        </>
+      );
+    }
+    if (mode === 'sign-up') {
+      return (
+        <div>
+          Already have an account?{' '}
+          <button
+            type="button"
+            onClick={() => setMode('sign-in')}
+            className="text-viability-green hover:text-viability-green-hover underline-offset-2 hover:underline"
+          >
+            Sign in
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={resetToSignIn}
+          className="text-viability-fg-muted hover:text-viability-cream underline-offset-2 hover:underline"
+        >
+          Back to sign in
+        </button>
+      </div>
+    );
+  })();
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{mode === 'sign-in' ? 'Sign in' : 'Create your account'}</CardTitle>
-          <CardDescription>
-            {mode === 'sign-in'
-              ? 'Welcome back to Mojo Viability.'
-              : 'Build your business viability assessment.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-                minLength={6}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? 'Working…' : mode === 'sign-in' ? 'Sign in' : 'Sign up'}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            {mode === 'sign-in' ? (
-              <>
-                Don't have an account?{' '}
-                <button onClick={() => setMode('sign-up')} className="underline">
-                  Create one
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{' '}
-                <button onClick={() => setMode('sign-in')} className="underline">
-                  Sign in
-                </button>
-              </>
-            )}
-          </div>
-          <div className="mt-4 text-center text-xs text-muted-foreground">
-            <Link to="/" className="underline">Back to landing</Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthCard
+      title={TITLES[mode].title}
+      description={TITLES[mode].description}
+      footer={status === 'reset-sent' ? undefined : footer}
+    >
+      {status === 'reset-sent' ? (
+        <div className="space-y-4">
+          <p className="font-sans text-[15px] text-viability-cream leading-relaxed">
+            Reset link sent. Check your inbox — usually arrives in under a minute.
+          </p>
+          <p className="font-mono text-[11px] text-viability-fg-subtle">
+            Going to {email}. If you don’t see it, check your spam folder.
+          </p>
+          <VButton variant="ghost" size="md" onClick={resetToSignIn}>
+            Back to sign in
+          </VButton>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <AuthField
+            id="email"
+            label="Email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            autoComplete="email"
+            required
+          />
+          {mode !== 'forgot-password' && (
+            <AuthField
+              id="password"
+              label="Password"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+              required
+              minLength={6}
+            />
+          )}
+          {errorMsg && (
+            <p className="font-mono text-[11px] text-viability-red">{errorMsg}</p>
+          )}
+          <VButton
+            size="md"
+            type="submit"
+            disabled={status === 'submitting'}
+            className="w-full justify-center"
+          >
+            {status === 'submitting'
+              ? SUBMIT_LABELS[mode].submitting
+              : SUBMIT_LABELS[mode].idle}
+          </VButton>
+        </form>
+      )}
+    </AuthCard>
   );
 }
