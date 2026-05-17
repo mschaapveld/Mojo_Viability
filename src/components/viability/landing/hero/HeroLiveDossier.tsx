@@ -37,7 +37,7 @@ export function HeroLiveDossier() {
             </h1>
 
             <p className="font-sans font-light text-[17px] leading-[1.6] text-viability-fg-muted mt-7 max-w-[480px]">
-              Move the four sliders → watch your viability case write itself.
+              Move the five sliders → watch your viability case write itself.
               Then come back and run the full{' '}
               <span className="text-viability-amber">twelve-module</span>{' '}
               version.

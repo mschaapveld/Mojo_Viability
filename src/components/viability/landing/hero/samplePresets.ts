@@ -2,6 +2,7 @@ export type VenueKey = 'cafe' | 'winebar' | 'pub';
 export type DossierStateKey = 'empty' | 'mid' | 'complete';
 
 export interface DossierValues {
+  sales: number;
   rent: number;
   cogs: number;
   labour: number;
@@ -16,7 +17,7 @@ export interface VenuePreset {
   preset: Record<DossierStateKey, DossierValues>;
 }
 
-const EMPTY_VALUES: DossierValues = { rent: 0, cogs: 0, labour: 0, other: 0 };
+const EMPTY_VALUES: DossierValues = { sales: 0, rent: 0, cogs: 0, labour: 0, other: 0 };
 
 export const SAMPLE_VENUES: Record<VenueKey, VenuePreset> = {
   cafe: {
@@ -26,8 +27,8 @@ export const SAMPLE_VENUES: Record<VenueKey, VenuePreset> = {
     notes: '7-day trade · breakfast + lunch · $24 avg check',
     preset: {
       empty: EMPTY_VALUES,
-      mid:      { rent: 110_000, cogs: 38, labour: 34, other: 18 },
-      complete: { rent:  56_000, cogs: 32, labour: 30, other: 16 },
+      mid:      { sales: 500_000, rent: 110_000, cogs: 38, labour: 34, other: 18 },
+      complete: { sales: 600_000, rent:  56_000, cogs: 32, labour: 30, other: 16 },
     },
   },
   winebar: {
@@ -37,8 +38,8 @@ export const SAMPLE_VENUES: Record<VenueKey, VenuePreset> = {
     notes: '5-day trade · evenings only · $58 avg check',
     preset: {
       empty: EMPTY_VALUES,
-      mid:      { rent: 175_000, cogs: 40, labour: 30, other: 20 },
-      complete: { rent:  92_000, cogs: 34, labour: 26, other: 18 },
+      mid:      { sales: 650_000, rent: 175_000, cogs: 40, labour: 30, other: 20 },
+      complete: { sales: 750_000, rent:  92_000, cogs: 34, labour: 26, other: 18 },
     },
   },
   pub: {
@@ -48,8 +49,8 @@ export const SAMPLE_VENUES: Record<VenueKey, VenuePreset> = {
     notes: '7-day trade · meals + bar · $38 avg check',
     preset: {
       empty: EMPTY_VALUES,
-      mid:      { rent: 160_000, cogs: 36, labour: 36, other: 22 },
-      complete: { rent:  92_000, cogs: 32, labour: 30, other: 20 },
+      mid:      { sales: 1_200_000, rent: 160_000, cogs: 36, labour: 36, other: 22 },
+      complete: { sales: 1_400_000, rent:  92_000, cogs: 32, labour: 30, other: 20 },
     },
   },
 };

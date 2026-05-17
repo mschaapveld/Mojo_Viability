@@ -6,12 +6,14 @@ export interface RowThresholds {
   direction: 'lt' | 'gt';
 }
 
+// All thresholds are now expressed as % of sales.
+// Pass percentages into lightFor() — for rent that means (rent / sales) * 100.
 export const THRESHOLDS = {
-  rent:      { green: 80_000, amber: 150_000, direction: 'lt' },
-  cogs:      { green: 32,     amber: 36,      direction: 'lt' },
-  labour:    { green: 30,     amber: 36,      direction: 'lt' },
-  other:     { green: 20,     amber: 25,      direction: 'lt' },
-  netMargin: { green: 10,     amber: 5,       direction: 'gt' },
+  rent:      { green: 8,  amber: 12, direction: 'lt' },
+  cogs:      { green: 32, amber: 36, direction: 'lt' },
+  labour:    { green: 30, amber: 36, direction: 'lt' },
+  other:     { green: 20, amber: 25, direction: 'lt' },
+  netMargin: { green: 10, amber: 5,  direction: 'gt' },
 } as const satisfies Record<string, RowThresholds>;
 
 export function lightFor(value: number, touched: boolean, t: RowThresholds): Light {

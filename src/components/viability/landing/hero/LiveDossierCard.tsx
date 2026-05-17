@@ -9,7 +9,6 @@ import {
   SAMPLE_VENUES,
   fmtPercent,
   fmtRent,
-  fmtRentShort,
   type DossierStateKey,
   type DossierValues,
   type VenueKey,
@@ -20,33 +19,28 @@ interface LiveDossierCardProps {
   initialState?: DossierStateKey;
 }
 
-const RENT_SLIDER = { min: 0, max: 300_000, step: 1000 };
-const PCT_SLIDER = { min: 0, max: 60, step: 0.5 };
+const SALES_SLIDER = { min: 0, max: 2_000_000, step: 5_000 };
+const RENT_SLIDER  = { min: 0, max: 300_000,   step: 1_000 };
+const PCT_SLIDER   = { min: 0, max: 60,        step: 0.5 };
 
 type TouchedMap = Record<keyof DossierValues, boolean>;
 
-function pctHintLt(value: number, touched: boolean, greenT: number, amberT: number): string {
-  if (!touched) return 'awaiting slider';
-  if (value < greenT) return `healthy · under ${greenT}%`;
-  if (value < amberT) return `tight · over ${greenT}%`;
-  return `red flag · over ${amberT}%`;
+function verdictWord(light: Light): string {
+  switch (light) {
+    case 'green':   return 'healthy';
+    case 'amber':   return 'tight';
+    case 'red':     return 'red flag';
+    case 'pending': return 'awaiting slider';
+  }
 }
 
-function rentHint(value: number, touched: boolean): string {
-  if (!touched) return 'awaiting slider';
-  const g = THRESHOLDS.rent.green;
-  const a = THRESHOLDS.rent.amber;
-  if (value < g) return `healthy · under ${fmtRentShort(g)}`;
-  if (value < a) return `tight · over ${fmtRentShort(g)}`;
-  return `red flag · over ${fmtRentShort(a)}`;
-}
-
-function netMarginHint(value: number, allTouched: boolean): string {
-  if (!allTouched) return 'awaiting sliders';
-  if (value > 10) return 'healthy · over 10%';
-  if (value > 5) return 'tight · 5–10%';
-  if (value > 0) return 'red flag · under 5%';
-  return 'red flag · costs exceed sales';
+// Negative-aware money formatter. Uses U+2212 minus sign for negative values
+// so net margin reads "−$90,000" rather than "-$90,000".
+function fmtMoney(n: number): string {
+  const rounded = Math.round(n);
+  const abs = Math.abs(rounded);
+  const sign = rounded < 0 ? '−' : '';
+  return `${sign}$${abs.toLocaleString('en-AU')}`;
 }
 
 function computeVerdict(opts: {
@@ -57,7 +51,7 @@ function computeVerdict(opts: {
 }): { tone: Tone; label: string; sub: string } {
   const { allTouched, reds, ambers, netMargin } = opts;
   if (!allTouched) {
-    return { tone: 'pending', label: 'Move the four sliders to see the verdict', sub: '— · —' };
+    return { tone: 'pending', label: 'Move the five sliders to see the verdict', sub: '— · —' };
   }
   if (netMargin <= 0) {
     return { tone: 'red', label: 'Walk away', sub: 'costs exceed sales' };
@@ -85,19 +79,21 @@ export function LiveDossierCard({
 
   const [vals, setVals] = useState<DossierValues>(() => ({ ...venue.preset[initialState] }));
   const [touched, setTouched] = useState<TouchedMap>(() => ({
-    rent: initialState !== 'empty',
-    cogs: initialState !== 'empty',
+    sales:  initialState !== 'empty',
+    rent:   initialState !== 'empty',
+    cogs:   initialState !== 'empty',
     labour: initialState !== 'empty',
-    other: initialState !== 'empty',
+    other:  initialState !== 'empty',
   }));
 
   useEffect(() => {
     setVals({ ...SAMPLE_VENUES[venueKey].preset[initialState] });
     setTouched({
-      rent: initialState !== 'empty',
-      cogs: initialState !== 'empty',
+      sales:  initialState !== 'empty',
+      rent:   initialState !== 'empty',
+      cogs:   initialState !== 'empty',
       labour: initialState !== 'empty',
-      other: initialState !== 'empty',
+      other:  initialState !== 'empty',
     });
   }, [venueKey, initialState]);
 
@@ -106,26 +102,77 @@ export function LiveDossierCard({
     setTouched((prev) => (prev[k] ? prev : { ...prev, [k]: true }));
   };
 
-  const anyTouched = touched.rent || touched.cogs || touched.labour || touched.other;
-  const allTouched = touched.rent && touched.cogs && touched.labour && touched.other;
-  const netMargin = 100 - vals.cogs - vals.labour - vals.other;
+  const anyTouched =
+    touched.sales || touched.rent || touched.cogs || touched.labour || touched.other;
+  const allTouched =
+    touched.sales && touched.rent && touched.cogs && touched.labour && touched.other;
 
-  const lights = useMemo(() => {
-    const rent = lightFor(vals.rent, touched.rent, THRESHOLDS.rent);
-    const cogs = lightFor(vals.cogs, touched.cogs, THRESHOLDS.cogs);
-    const labour = lightFor(vals.labour, touched.labour, THRESHOLDS.labour);
-    const other = lightFor(vals.other, touched.other, THRESHOLDS.other);
-    const netMarginLight: Light = lightFor(
-      netMargin,
-      touched.cogs && touched.labour && touched.other,
-      THRESHOLDS.netMargin,
-    );
-    return { rent, cogs, labour, other, netMargin: netMarginLight };
-  }, [vals, touched, netMargin]);
+  // Dollar derivations
+  const rentDollar      = vals.rent;
+  const cogsDollar      = vals.sales * (vals.cogs   / 100);
+  const labourDollar    = vals.sales * (vals.labour / 100);
+  const otherDollar     = vals.sales * (vals.other  / 100);
+  const netMarginDollar = vals.sales - rentDollar - cogsDollar - labourDollar - otherDollar;
 
-  const reds = Object.values(lights).filter((l) => l === 'red').length;
-  const ambers = Object.values(lights).filter((l) => l === 'amber').length;
-  const verdict = computeVerdict({ allTouched, reds, ambers, netMargin });
+  // Percentage-of-sales (used for threshold evaluation + hint copy)
+  const rentPct      = vals.sales > 0 ? (vals.rent / vals.sales) * 100 : 0;
+  const cogsPct      = vals.cogs;
+  const labourPct    = vals.labour;
+  const otherPct     = vals.other;
+  const netMarginPct = vals.sales > 0 ? (netMarginDollar / vals.sales) * 100 : 0;
+
+  // Per-row touched conditions — every row depends on sales being touched
+  // (because every derived value is denominated in / against sales)
+  const rentRowTouched      = touched.sales && touched.rent;
+  const cogsRowTouched      = touched.sales && touched.cogs;
+  const labourRowTouched    = touched.sales && touched.labour;
+  const otherRowTouched     = touched.sales && touched.other;
+  const netMarginRowTouched = allTouched;
+
+  const lights = useMemo(() => ({
+    rent:      lightFor(rentPct,      rentRowTouched,      THRESHOLDS.rent),
+    cogs:      lightFor(cogsPct,      cogsRowTouched,      THRESHOLDS.cogs),
+    labour:    lightFor(labourPct,    labourRowTouched,    THRESHOLDS.labour),
+    other:     lightFor(otherPct,     otherRowTouched,     THRESHOLDS.other),
+    netMargin: lightFor(netMarginPct, netMarginRowTouched, THRESHOLDS.netMargin),
+  }), [rentPct, cogsPct, labourPct, otherPct, netMarginPct,
+       rentRowTouched, cogsRowTouched, labourRowTouched, otherRowTouched, netMarginRowTouched]);
+
+  const lightsArr: Light[] = [lights.rent, lights.cogs, lights.labour, lights.other, lights.netMargin];
+  const reds   = lightsArr.filter((l) => l === 'red').length;
+  const ambers = lightsArr.filter((l) => l === 'amber').length;
+  const verdict = computeVerdict({ allTouched, reds, ambers, netMargin: netMarginDollar });
+
+  // Per-row hint copy
+  const rentHint = !touched.sales
+    ? 'awaiting annual sales'
+    : !touched.rent
+      ? 'awaiting slider'
+      : `${verdictWord(lights.rent)} · ${rentPct.toFixed(1)}% of sales`;
+
+  const cogsHint = !touched.sales
+    ? 'awaiting annual sales'
+    : !touched.cogs
+      ? 'awaiting slider'
+      : `${verdictWord(lights.cogs)} · ${cogsPct.toFixed(1)}% of sales`;
+
+  const labourHint = !touched.sales
+    ? 'awaiting annual sales'
+    : !touched.labour
+      ? 'awaiting slider'
+      : `${verdictWord(lights.labour)} · ${labourPct.toFixed(1)}% of sales`;
+
+  const otherHint = !touched.sales
+    ? 'awaiting annual sales'
+    : !touched.other
+      ? 'awaiting slider'
+      : `${verdictWord(lights.other)} · ${otherPct.toFixed(1)}% of sales`;
+
+  const netMarginHint = !netMarginRowTouched
+    ? 'awaiting all sliders'
+    : netMarginDollar < 0
+      ? 'costs exceed sales'
+      : `${verdictWord(lights.netMargin)} · ${netMarginPct.toFixed(1)}% of sales`;
 
   return (
     <div className="bg-[#0c0c0c] border border-viability-border rounded-tight shadow-[0_30px_80px_rgba(0,0,0,0.55)] overflow-hidden">
@@ -170,6 +217,18 @@ export function LiveDossierCard({
 
       {/* Sliders */}
       <div className="px-[22px] pt-[14px] pb-2 flex flex-col gap-[14px]">
+        <DossierSlider
+          label="Annual sales"
+          help="the realistic annual revenue you expect"
+          value={vals.sales}
+          touched={touched.sales}
+          min={SALES_SLIDER.min}
+          max={SALES_SLIDER.max}
+          step={SALES_SLIDER.step}
+          format={fmtRent}
+          untouchedDisplay="$— · set this"
+          onChange={handleSlide('sales')}
+        />
         <DossierSlider
           label="Annual rent"
           help="base rent on the lease (ex outgoings)"
@@ -227,26 +286,26 @@ export function LiveDossierCard({
         </div>
         <DossierRow
           label="Annual rent"
-          display={touched.rent ? fmtRent(vals.rent) : '—'}
-          hint={rentHint(vals.rent, touched.rent)}
+          display={rentRowTouched ? fmtMoney(rentDollar) : '$—'}
+          hint={rentHint}
           light={lights.rent}
         />
         <DossierRow
           label="Cost of goods"
-          display={touched.cogs ? fmtPercent(vals.cogs) : '—'}
-          hint={pctHintLt(vals.cogs, touched.cogs, THRESHOLDS.cogs.green, THRESHOLDS.cogs.amber)}
+          display={cogsRowTouched ? fmtMoney(cogsDollar) : '$—'}
+          hint={cogsHint}
           light={lights.cogs}
         />
         <DossierRow
           label="Labour"
-          display={touched.labour ? fmtPercent(vals.labour) : '—'}
-          hint={pctHintLt(vals.labour, touched.labour, THRESHOLDS.labour.green, THRESHOLDS.labour.amber)}
+          display={labourRowTouched ? fmtMoney(labourDollar) : '$—'}
+          hint={labourHint}
           light={lights.labour}
         />
         <DossierRow
           label="Other costs"
-          display={touched.other ? fmtPercent(vals.other) : '—'}
-          hint={pctHintLt(vals.other, touched.other, THRESHOLDS.other.green, THRESHOLDS.other.amber)}
+          display={otherRowTouched ? fmtMoney(otherDollar) : '$—'}
+          hint={otherHint}
           light={lights.other}
         />
         <DossierRow
@@ -256,8 +315,8 @@ export function LiveDossierCard({
               <span className="text-viability-fg-subtle">· what’s left over</span>
             </span>
           }
-          display={allTouched ? fmtPercent(netMargin) : '—'}
-          hint={netMarginHint(netMargin, allTouched)}
+          display={netMarginRowTouched ? fmtMoney(netMarginDollar) : '$—'}
+          hint={netMarginHint}
           light={lights.netMargin}
           emphasised
         />
