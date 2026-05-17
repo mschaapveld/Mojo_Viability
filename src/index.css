@@ -218,6 +218,16 @@
   input[type="number"] {
     -moz-appearance: textfield;
   }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px var(--vbr-ink-2) inset !important;
+    -webkit-text-fill-color: var(--vbr-cream) !important;
+    caret-color: var(--vbr-cream);
+    transition: background-color 5000s ease-in-out 0s;
+  }
 }
 
 @layer components {
