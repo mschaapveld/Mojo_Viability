@@ -38,6 +38,22 @@ Deleted:
 - Mobile collapse at 390×844: docWidth 375, viewport 390, no horizontal scroll. Hero stacks correctly (left rail above dossier card).
 - Founder story screenshot confirmed: opening green-italic typographic open quote + "Behind every closed venue there's a family." + closing typographic quote. Body paragraph reads "I built **Mojo** Viability because the deal-breakers…".
 
+## Patches after Dispatch C
+
+Two follow-up commits landed on top of `7906a9a`:
+
+**`b10bf8d feat: wire shopfront-interior photo + match founder closing quote style`**
+- `ShopfrontPlaceholder` extended with an optional `image` prop. When set: renders the photo full-bleed via `<img loading="lazy">`, drops the centred mono caption, keeps the editorial corner brackets. When unset: original diagonal-hatch + caption behaviour (still used until a tile gets its photo).
+- `SectionHow` wired the left placeholder to `/images/landing-shopfront-interior.jpg` (84 KB).
+- `SectionProof` founder pull-quote closing typographic double-quote now matches the opening — green-italic Fraunces at 56px with the same baseline trick. Symmetric bookends around the lead line.
+
+**`246a817 feat: wire unsigned-lease photo into SectionHow`** (Step 11b-C-patch)
+- Right placeholder in SectionHow now renders `/images/landing_unsigned_lease.jpg` (88 KB). Mirrors the left side's wiring. No caption overlay.
+
+**Notes for follow-up:**
+- **Filename inconsistency** — `landing-shopfront-interior.jpg` uses hyphens; `landing_unsigned_lease.jpg` uses underscores. Cosmetic only; rename one for consistency in a future sweep.
+- **Unused PNG masters** — `landing-shopfront-interior.png` (2.4 MB) and `landing_unsigned_lease.png` (1.7 MB) both sit in `public/images/`. Vercel will serve them but the site never references them. Sweep before public launch.
+
 ## In Progress
 
 None — Dispatch C is a closed unit.
