@@ -59,13 +59,13 @@ export function SectionProof() {
             >
               “
             </span>
-            Behind every closed venue there’s a family.
+            Behind every closed venue there’s a family.”
           </div>
 
           <p className="font-sans font-light text-[15.5px] leading-[1.65] text-viability-fg-muted m-0">
             I’ve watched mates sign leases on numbers that never had a chance —
             savings drained, marriages stretched, sometimes worse. I built
-            Viability because the deal-breakers are almost always visible{' '}
+            Mojo Viability because the deal-breakers are almost always visible{' '}
             <em>before</em> the lease is signed; you just need a structured way
             to look. The tool doesn’t promise success. It just makes the
             structural mistakes visible while there’s still time to walk away.

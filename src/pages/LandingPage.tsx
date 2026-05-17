@@ -1,7 +1,7 @@
 import { ViabilityHeader } from '@/components/viability/ViabilityHeader';
 import { ViabilityFooter } from '@/components/viability/ViabilityFooter';
 import { ViabilityTicker } from '@/components/viability/ViabilityTicker';
-import { HeroPlaceholder } from '@/components/viability/landing/HeroPlaceholder';
+import { HeroLiveDossier } from '@/components/viability/landing/hero/HeroLiveDossier';
 import { SectionWhat } from '@/components/viability/landing/SectionWhat';
 import { SectionBuiltFor } from '@/components/viability/landing/SectionBuiltFor';
 import { SectionHow } from '@/components/viability/landing/SectionHow';
@@ -13,7 +13,7 @@ export default function LandingPage() {
   return (
     <div className="bg-viability-ink text-viability-cream font-sans min-h-screen">
       <ViabilityHeader activePage="home" />
-      <HeroPlaceholder />
+      <HeroLiveDossier />
       <ViabilityTicker />
       <SectionWhat />
       <SectionBuiltFor />
