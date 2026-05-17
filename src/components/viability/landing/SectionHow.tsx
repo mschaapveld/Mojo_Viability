@@ -75,7 +75,7 @@ export function SectionHow() {
         <ShopfrontPlaceholder
           caption="UNSIGNED LEASE · TABLE STILL LIFE"
           image={{
-            src: '/images/landing_unsigned_lease.jpg',
+            src: '/images/landing-unsigned-lease.jpg',
             alt: 'An unsigned commercial lease on a wooden table — fountain pen uncapped beside it, a half-finished cup of black coffee, and an open notebook with handwritten rent and outgoings calculations. The empty interior of a hospitality venue sits in shadow behind, lit by a single warm lamp.',
           }}
         />
