@@ -72,7 +72,13 @@ export function SectionHow() {
             alt: 'Empty pre-fitout café interior — exposed brick, polished concrete, late-afternoon light through the shopfront window.',
           }}
         />
-        <ShopfrontPlaceholder caption="UNSIGNED LEASE · TABLE STILL LIFE" />
+        <ShopfrontPlaceholder
+          caption="UNSIGNED LEASE · TABLE STILL LIFE"
+          image={{
+            src: '/images/landing_unsigned_lease.jpg',
+            alt: 'An unsigned commercial lease on a wooden table — fountain pen uncapped beside it, a half-finished cup of black coffee, and an open notebook with handwritten rent and outgoings calculations. The empty interior of a hospitality venue sits in shadow behind, lit by a single warm lamp.',
+          }}
+        />
       </div>
     </SectionShell>
   );
