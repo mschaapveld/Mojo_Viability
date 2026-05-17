@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { loadProjects } from '@/features/project/api/projectsApi';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ViabilityHeader } from '@/components/viability/ViabilityHeader';
+import { ViabilityFooter } from '@/components/viability/ViabilityFooter';
+import { VButton } from '@/components/viability/VButton';
 import { useAuth } from '@/providers/AuthProvider';
 
 interface ProjectSummary {
@@ -11,8 +12,17 @@ interface ProjectSummary {
   updated_at: string;
 }
 
+function formatUpdatedAt(value: string): string {
+  return new Date(value).toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 export default function ProjectsListPage() {
-  const { signOut, user } = useAuth();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,65 +48,75 @@ export default function ProjectsListPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <header className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">Your projects</h1>
-            <p className="text-sm text-muted-foreground">Signed in as {user?.email}</p>
-          </div>
-          <Button variant="outline" onClick={() => signOut()}>
-            Sign out
-          </Button>
+    <div className="bg-viability-ink text-viability-cream min-h-screen flex flex-col font-sans">
+      <ViabilityHeader />
+
+      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-16">
+        <header>
+          <h1 className="font-display font-semibold text-[clamp(38px,4.2vw,60px)] leading-[1.02] tracking-[-0.025em] text-viability-cream">
+            Your projects
+          </h1>
+          {user?.email && (
+            <p className="font-sans text-viability-fg-muted text-[14px] mt-3">
+              Signed in as {user.email}
+            </p>
+          )}
         </header>
 
-        {error && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Couldn't load projects</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{error}</p>
-            </CardContent>
-          </Card>
-        )}
+        <div className="mt-12 space-y-3">
+          {error && (
+            <div className="bg-viability-ink-2 border border-viability-border rounded-tight p-8">
+              <h2 className="font-display text-[24px] text-viability-cream">
+                Couldn't load projects
+              </h2>
+              <p className="font-mono text-[13px] text-viability-red mt-3">{error}</p>
+            </div>
+          )}
 
-        {projects && projects.length === 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>No projects yet</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
+          {!error && projects === null && (
+            <p className="font-mono text-[12px] text-viability-fg-muted">Loading…</p>
+          )}
+
+          {!error && projects && projects.length === 0 && (
+            <div className="bg-viability-ink-2 border border-viability-border rounded-tight p-8">
+              <h2 className="font-display text-[28px] text-viability-cream">No projects yet</h2>
+              <p className="font-sans text-[15px] text-viability-fg-muted mt-3 mb-6">
                 You haven't created any viability projects. Get started from the landing page.
               </p>
-              <Button asChild>
-                <Link to="/start">Start your first project</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+              <VButton size="md" onClick={() => navigate('/start')}>
+                Start your first project →
+              </VButton>
+            </div>
+          )}
 
-        {projects && projects.length > 0 && (
-          <div className="space-y-3">
-            {projects.map((p) => (
-              <Card key={p.id}>
-                <CardContent className="flex items-center justify-between py-4">
+          {!error && projects && projects.length > 0 && (
+            <div className="space-y-3">
+              {projects.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => navigate(`/project/${p.id}/break-even`)}
+                  className="bg-viability-ink-2 border border-viability-border rounded-tight p-6 w-full flex justify-between items-center text-left hover:bg-viability-ink-3 transition-colors"
+                >
                   <div>
-                    <p className="font-medium">{p.name || 'Untitled project'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Last updated {new Date(p.updated_at).toLocaleString('en-AU')}
+                    <p className="font-display text-[22px] text-viability-cream">
+                      {p.name || 'Untitled project'}
+                    </p>
+                    <p className="font-mono text-[11px] text-viability-fg-subtle mt-1.5">
+                      Last updated {formatUpdatedAt(p.updated_at)}
                     </p>
                   </div>
-                  <Button asChild variant="outline">
-                    <Link to={`/project/${p.id}/break-even`}>Open</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+                  <VButton size="sm" variant="ghost">
+                    Open →
+                  </VButton>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+
+      <ViabilityFooter />
     </div>
   );
 }
