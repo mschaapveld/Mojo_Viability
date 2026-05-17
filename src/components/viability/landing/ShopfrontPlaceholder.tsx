@@ -2,10 +2,11 @@ import { cn } from '@/lib/utils';
 
 interface ShopfrontPlaceholderProps {
   caption: string;
+  image?: { src: string; alt: string };
   className?: string;
 }
 
-export function ShopfrontPlaceholder({ caption, className }: ShopfrontPlaceholderProps) {
+export function ShopfrontPlaceholder({ caption, image, className }: ShopfrontPlaceholderProps) {
   return (
     <div
       className={cn(
@@ -13,21 +14,37 @@ export function ShopfrontPlaceholder({ caption, className }: ShopfrontPlaceholde
         'border border-viability-border',
         className,
       )}
-      style={{
-        backgroundImage:
-          'repeating-linear-gradient(45deg, rgba(245,242,237,0.025) 0 8px, rgba(245,242,237,0) 8px 16px)',
-      }}
+      style={
+        image
+          ? undefined
+          : {
+              backgroundImage:
+                'repeating-linear-gradient(45deg, rgba(245,242,237,0.025) 0 8px, rgba(245,242,237,0) 8px 16px)',
+            }
+      }
     >
-      {/* Corner brackets */}
+      {image && (
+        <img
+          src={image.src}
+          alt={image.alt}
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
+
+      {/* Corner brackets — decorative editorial frame, kept in both modes */}
       <span className="absolute top-[10px] left-[10px] w-[14px] h-[14px] border-t border-l border-viability-border-strong" />
       <span className="absolute top-[10px] right-[10px] w-[14px] h-[14px] border-t border-r border-viability-border-strong" />
       <span className="absolute bottom-[10px] left-[10px] w-[14px] h-[14px] border-b border-l border-viability-border-strong" />
       <span className="absolute bottom-[10px] right-[10px] w-[14px] h-[14px] border-b border-r border-viability-border-strong" />
 
-      {/* Centred caption */}
-      <span className="absolute inset-0 flex items-center justify-center font-mono text-[11px] uppercase tracking-[0.16em] text-viability-fg-subtle text-center px-6">
-        {caption}
-      </span>
+      {/* Centred caption — placeholder mode only */}
+      {!image && (
+        <span className="absolute inset-0 flex items-center justify-center font-mono text-[11px] uppercase tracking-[0.16em] text-viability-fg-subtle text-center px-6">
+          {caption}
+        </span>
+      )}
     </div>
   );
 }

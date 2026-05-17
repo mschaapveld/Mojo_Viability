@@ -59,7 +59,14 @@ export function SectionProof() {
             >
               “
             </span>
-            Behind every closed venue there’s a family.”
+            Behind every closed venue there’s a family.
+            <span
+              className="font-display italic text-viability-green ml-1"
+              style={{ fontSize: 56, lineHeight: 0, verticalAlign: '-0.2em' }}
+              aria-hidden="true"
+            >
+              ”
+            </span>
           </div>
 
           <p className="font-sans font-light text-[15.5px] leading-[1.65] text-viability-fg-muted m-0">

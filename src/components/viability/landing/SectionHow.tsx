@@ -65,7 +65,13 @@ export function SectionHow() {
       </div>
 
       <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-5">
-        <ShopfrontPlaceholder caption="PRE-FITOUT SHOPFRONT · INTERIOR" />
+        <ShopfrontPlaceholder
+          caption="PRE-FITOUT SHOPFRONT · INTERIOR"
+          image={{
+            src: '/images/landing-shopfront-interior.jpg',
+            alt: 'Empty pre-fitout café interior — exposed brick, polished concrete, late-afternoon light through the shopfront window.',
+          }}
+        />
         <ShopfrontPlaceholder caption="UNSIGNED LEASE · TABLE STILL LIFE" />
       </div>
     </SectionShell>
